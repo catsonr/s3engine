@@ -1,0 +1,26 @@
+html, head, body {
+    margin: 0;
+    background-color: #101010;
+
+    display: flex;
+    overflow: hidden;
+
+    font-family: monospace;
+}
+
+canvas {
+    display: block;
+    image-rendering: pixelated;
+}
+
+#shadercanvas {
+    background-color: #78b53c;
+}
+
+div {
+    margin-left: 10px;
+    color: white;
+}
+#errorbox {
+    color: red;
+}
