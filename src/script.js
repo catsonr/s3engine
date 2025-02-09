@@ -12,32 +12,34 @@ const vec3 = glMatrix.vec3;
 // shader code start
 // --------------------------------------------------------------------------------
 const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
-    precision mediump float;
+    precision highp float;
 
     in vec3 a_position;
-    in vec4 a_color;
+    in vec2 a_texcoord;
 
     uniform mat4 u_mWorld;
     uniform mat4 u_mView;
     uniform mat4 u_mProj;
 
-    out vec4 v_color;
+    out vec2 v_texcoord;
 
     void main() {
-        v_color = a_color;
+        v_texcoord = a_texcoord;
 
         gl_Position = u_mProj * u_mView * u_mWorld * vec4(a_position, 1.0); 
     }`;
 
 const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
-    precision mediump float;
+    precision highp float;
 
-    in vec4 v_color;
+    in vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
 
     out vec4 outputColor;
 
     void main() {
-        outputColor = vec4(v_color);
+        outputColor = texture(u_texture, v_texcoord);
     }`;
 // --------------------------------------------------------------------------------
 // shader code end
@@ -85,19 +87,49 @@ function main() {
     const cubeVertexBuffer = createArrayBuffer(gl, geo_cubeVertices);
     
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
-    gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, 3 * 4, 0);
+    gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_position);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-    // creates and enables color array, into a_color
-    const a_color = gl.getAttribLocation(program, 'a_color');
-    const cubeColorsBuffer = createArrayBuffer(gl, geo_cubeColors);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeColorsBuffer);
-    gl.vertexAttribPointer(a_color, 4, gl.FLOAT, false, 4 * 4, 0);
-    gl.enableVertexAttribArray(a_color);
+    // creates and enables texture vertex array, into a_texcoord
+    const a_texcoord = gl.getAttribLocation(program, 'a_texcoord');
+    const textureCoordinates = [
+        // Front
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        // Back
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        // Top
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        // Bottom
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        // Right
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        // Left
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+    ];
+    const texCoordBuffer = createArrayBuffer(gl, textureCoordinates);
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.vertexAttribPointer(a_texcoord, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_texcoord);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
+    // loads texture
+    let texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    // sets texture to solid yellow as placeholder while actual texture loads
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 245, 60, 255]));
+
+    let image = new Image();
+    image.src = "img/ahh.png";
+    image.addEventListener('load', function() {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.generateMipmap(gl.TEXTURE_2D);
+    });
+
+    // creates index buffer
     const cubeIndexBuffer = createIndexBuffer(gl, geo_cubeIndices);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
 
