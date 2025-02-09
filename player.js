@@ -4,11 +4,11 @@ class Camera {
         this.pos = pos; 
 
         // normal vector of direction camera is pointing
-        this.viewingAngle = vec3.fromValues(0, 0, 1);
+        this.viewingDir = vec3.fromValues(0, 0, 1);
 
         // point camera is looking at
         this.lookingAt = vec3.clone(pos);
-        vec3.add(this.lookingAt, this.pos, this.viewingAngle);
+        vec3.add(this.lookingAt, this.pos, this.viewingDir);
 
         // some constants
         this.up = vec3.fromValues(0, 1, 0);
@@ -22,12 +22,24 @@ class Camera {
         this.yaw   = 0;
     }
 
+    print() {
+        console.log('pos : ', this.pos[0], this.pos[1], this.pos[2]);
+        console.log('viewing angle : ', this.viewingDir[0], this.viewingDir[1], this.viewingDir[2]);
+        console.log('looking at : ', this.lookingAt[0], this.lookingAt[1], this.lookingAt[2]);
+        console.log('pitch / yaw : ', this.pitch, this.yaw);
+        console.log('\n');
+    }
+
     update(gl, viewMatrixLocation, viewMatrix) {
-        setVec3RotationX(this.viewingAngle, this.viewingAngle, this.pitch);
-        setVec3RotationY(this.viewingAngle, this.viewingAngle, this.yaw);
+        if(this.pitch >= Math.PI / 2) this.pitch = Math.PI / 2;
+        else if(this.pitch <= -Math.PI / 2) this.pitch = -Math.PI / 2;
+
+        setVec3RotationX(this.viewingDir, this.viewingDir, this.pitch);
+        setVec3RotationY(this.viewingDir, this.viewingDir, this.yaw);
+        vec3.normalize(this.viewingDir, this.viewingDir);
 
         vec3.copy(this.lookingAt, this.pos);
-        vec3.add(this.lookingAt, this.lookingAt, this.viewingAngle);
+        vec3.add(this.lookingAt, this.lookingAt, this.viewingDir);
 
         // constructs view matrix according to position, point camera is looking at, and what direction is 'up'
         mat4.lookAt(viewMatrix, this.pos, this.lookingAt, this.up);
@@ -38,8 +50,10 @@ class Camera {
 }
 
 class Player {
-    constructor(x = 0, y = 0, z = -10) {
+    constructor(x = 2, y = 0, z = -10) {
         this.pos = vec3.fromValues(x, y, z);
+
+        this.movementDir = vec3.create();
         this.movement = {
             W: false,
             A: false,
@@ -85,10 +99,28 @@ class Player {
     }
 
     processMouseMouse(event) {
-        this.camera.pitch += event.movementY * this.mouseSensitivity;
-        this.camera.yaw   += event.movementX * this.mouseSensitivity;
+        this.camera.pitch -= event.movementY * this.mouseSensitivity;
+        this.camera.yaw   -= event.movementX * this.mouseSensitivity;
     }
 
     update(dt) {
+        this.movementDir[2] = Number(this.movement.W) - Number(this.movement.S);
+        this.movementDir[0] = Number(this.movement.A) - Number(this.movement.D);
+        vec3.normalize(this.movementDir, this.movementDir);
+
+        const forward = vec3.create();
+        vec3.scale(forward, this.camera.viewingDir, this.movementDir[2] * this.movementSpeed * dt);
+
+        const right = vec3.create();
+        vec3.cross(right, this.camera.up, this.camera.viewingDir);
+        vec3.normalize(right, right);
+        vec3.scale(right, right, this.movementDir[0] * this.movementSpeed * dt);
+
+        const move = vec3.create();
+        vec3.add(move, forward, right);
+        
+        // TODO: normalize ignoring Y component
+        this.pos[0] += move[0];
+        this.pos[2] += move[2];
     }
 }
