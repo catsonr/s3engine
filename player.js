@@ -1,26 +1,45 @@
 class Camera {
-    constructor(pos, lookingAt) {
+    constructor(pos) {
+        // position of camera
         this.pos = pos; 
-        this.lookingAt = lookingAt;
 
-        this.up = [0, 1, 0];
+        // normal vector of direction camera is pointing
+        this.viewingAngle = vec3.fromValues(0, 0, 1);
 
+        // point camera is looking at
+        this.lookingAt = vec3.clone(pos);
+        vec3.add(this.lookingAt, this.pos, this.viewingAngle);
+
+        // some constants
+        this.up = vec3.fromValues(0, 1, 0);
         this.fov = (45 * Math.PI) / 180;
         this.aspectRatio = WIDTH / HEIGHT;
         this.zNear = 0.1;
         this.zFar = 100.0;
+
+        // camera angle stuff
+        this.pitch = 0;
+        this.yaw   = 0;
     }
 
     update(gl, viewMatrixLocation, viewMatrix) {
+        setVec3RotationX(this.viewingAngle, this.viewingAngle, this.pitch);
+        setVec3RotationY(this.viewingAngle, this.viewingAngle, this.yaw);
+
+        vec3.copy(this.lookingAt, this.pos);
+        vec3.add(this.lookingAt, this.lookingAt, this.viewingAngle);
+
+        // constructs view matrix according to position, point camera is looking at, and what direction is 'up'
         mat4.lookAt(viewMatrix, this.pos, this.lookingAt, this.up);
+
+        // sends view matrix to shader
         gl.uniformMatrix4fv(viewMatrixLocation, gl.FALSE, viewMatrix);
     }
 }
 
 class Player {
-    constructor(x = 0, y = 0, z = -20) {
-        this.pos = [x, y, z];
-        this.lookingAt = [x, y, z + 1];
+    constructor(x = 0, y = 0, z = -10) {
+        this.pos = vec3.fromValues(x, y, z);
         this.movement = {
             W: false,
             A: false,
@@ -28,11 +47,7 @@ class Player {
             D: false,
         };
 
-        this.viewingAngle = {
-            horizontal: 0,
-            vertical:   0,
-        }
-        this.camera = new Camera(this.pos, this.lookingAt);
+        this.camera = new Camera(this.pos);
 
         // constants
         this.movementSpeed = 1.0;
@@ -70,11 +85,8 @@ class Player {
     }
 
     processMouseMouse(event) {
-        this.viewingAngle.vertical   += -event.movementY * this.mouseSensitivity;
-        this.viewingAngle.horizontal += -event.movementX * this.mouseSensitivity;
-
-        if(this.viewingAngle.vertical >= Math.PI / 2) this.viewingAngle.vertical = Math.PI / 2;
-        else if(this.viewingAngle.vertical <= -Math.PI / 2) this.viewingAngle.vertical = -Math.PI / 2;
+        this.camera.pitch += event.movementY * this.mouseSensitivity;
+        this.camera.yaw   += event.movementX * this.mouseSensitivity;
     }
 
     update(dt) {

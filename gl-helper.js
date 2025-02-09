@@ -40,3 +40,20 @@ function createIndexBuffer(gl, indices) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     return indexBuffer;
 }
+
+function setVec3RotationX(out, v, angle) {
+    const length = Math.hypot(v[0], v[1], v[2]);
+    
+    out[1] = length * Math.sin(angle);
+    out[2] = length * Math.cos(angle);
+
+    return out;
+}
+function setVec3RotationY(out, v, angle) {
+    const length = Math.hypot(v[0], v[1], v[2]);
+    
+    out[0] = length * Math.sin(angle);
+    out[2] = length * Math.cos(angle);
+
+    return out;
+}

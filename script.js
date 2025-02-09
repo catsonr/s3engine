@@ -121,8 +121,6 @@ function main() {
         player.processKeyRelease(key);
     });
 
-    console.log(player);
-
     draw(); 
     function draw() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -130,7 +128,6 @@ function main() {
 
         player.update(.1);
         player.camera.update(gl, u_mView, viewMatrix);
-        //console.log('horiz: ' + player.viewingAngle.horizontal * 180 / Math.PI, 'vert: ' + player.viewingAngle.vertical * 180 / Math.PI);
 
         requestAnimationFrame(draw);
     }
