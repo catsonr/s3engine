@@ -18,6 +18,7 @@ const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
 
     in vec3 a_position;
     in vec2 a_texcoord;
+    in vec3 a_normals;
 
     uniform mat4 u_mWorld;
     uniform mat4 u_mView;
@@ -26,9 +27,11 @@ const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
     uniform mat4 u_mInstance;
 
     out vec2 v_texcoord;
+    out vec3 v_normal;
 
     void main() {
         v_texcoord = a_texcoord;
+        v_normal = mat3((u_mWorld * u_mInstance)) * a_normals;
 
         gl_Position = u_mProj * u_mView * (u_mWorld * u_mInstance) * vec4(a_position, 1.0); 
     }`;
@@ -37,13 +40,21 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
 
     in vec2 v_texcoord;
+    in vec3 v_normal;
 
     uniform sampler2D u_texture;
 
     out vec4 outputColor;
 
     void main() {
-        outputColor = texture(u_texture, v_texcoord);
+        vec3 lightdir = normalize(vec3(5, 1, 3));
+        vec3 normal   = normalize(v_normal);
+
+        float light = dot(normal, lightdir);
+        vec4 ambientLight = vec4(0.2, 0.2, 0.4, 1.0);
+
+        outputColor = ambientLight + (vec4(1.0, 0.5, 0.7, 1.0) * light);
+        //outputColor = texture(u_texture, v_texcoord);
     }`;
 // --------------------------------------------------------------------------------
 // shader code end
@@ -92,15 +103,13 @@ function main() {
     // creating cubes
     const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
     cubes = [];
-    for(let i = 0; i < 5000; i++) {
-        
-        cubes.push(new Cube([(Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 50, (Math.random() * 2 - 1) * 100], [(Math.random() * 2 - 1), (Math.random() * 2 - 1), (Math.random() * 2 - 1)]));
-    }
+    //cubes.push(new Cube([0, 0, 0], [1, 1, 1]));
+
+   for(let i = 0; i < 1000; i++) cubes.push(new Cube([(Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 100], [1, 1, 1]));
 
     // creates and enables vertex array, into a_position
     const a_position = gl.getAttribLocation(program, 'a_position');
     const cubeVertexBuffer = createArrayBuffer(gl, cube_vertices);
-    
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
     gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_position);
@@ -109,10 +118,17 @@ function main() {
     // creates and enables texture vertex array, into a_texcoord
     const a_texcoord = gl.getAttribLocation(program, 'a_texcoord');
     const texCoordBuffer = createArrayBuffer(gl, cube_textureCoords);
-    
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.vertexAttribPointer(a_texcoord, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_texcoord);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    // creates and enables vertex normals array, into a_normals
+    const a_normals = gl.getAttribLocation(program, 'a_normals');
+    const normalsBuffer = createArrayBuffer(gl, cube_normals);
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalsBuffer);
+    gl.vertexAttribPointer(a_normals, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_normals);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
     // loads texture
@@ -158,6 +174,12 @@ function main() {
     function draw() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         for(let i = 0; i < cubes.length; i++) {
+            let mat = cubes[i].matrix;
+
+            mat4.rotate(mat, mat, Math.random() / 500 * cubes[i].rotationDir, [1, 0, 0]);
+            mat4.rotate(mat, mat, Math.random() / 500 * cubes[i].rotationDir, [0, 0, 1]);
+            mat4.rotate(mat, mat, Math.random() / 500 * cubes[i].rotationDir, [0, 1, 0]);
+
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, cubes[i].matrix);
             gl.drawElements(gl.TRIANGLES, cube_vertexIndices.length, gl.UNSIGNED_SHORT, 0);
         }
