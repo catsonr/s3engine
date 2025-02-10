@@ -1,13 +1,15 @@
 // globals
-const WIDTH = 800;
-const HEIGHT = 600;
+/*const WIDTH = 800;
+const HEIGHT = 600;*/
+const WIDTH = window.innerWidth;
+const HEIGHT = window.innerHeight;
 
 const canvasName = "s3canvas";
 const canvas = document.getElementById(canvasName);
 const gl = canvas.getContext("webgl2");
 
-const mat4 = glMatrix.mat4;
-const vec3 = glMatrix.vec3;
+const mat4  = glMatrix.mat4;
+const vec3  = glMatrix.vec3;
 
 // shader code start
 // --------------------------------------------------------------------------------
@@ -21,12 +23,14 @@ const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
     uniform mat4 u_mView;
     uniform mat4 u_mProj;
 
+    uniform mat4 u_mInstance;
+
     out vec2 v_texcoord;
 
     void main() {
         v_texcoord = a_texcoord;
 
-        gl_Position = u_mProj * u_mView * u_mWorld * vec4(a_position, 1.0); 
+        gl_Position = u_mProj * u_mView * (u_mWorld * u_mInstance) * vec4(a_position, 1.0); 
     }`;
 
 const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
@@ -47,6 +51,8 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 let player = new Player();
 
 function main() {
+    
+
     // compiles shader code and creates shader program
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEXSHADERSOURCECODE);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENTSHADERSOURCECODE);
@@ -63,6 +69,7 @@ function main() {
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
+
 
     // world matrix
     const worldMatrix = mat4.create();
@@ -82,9 +89,17 @@ function main() {
     mat4.perspective(projMatrix, player.camera.fov, player.camera.aspectRatio, player.camera.zNear, player.camera.zFar);
     gl.uniformMatrix4fv(u_mProj, gl.FALSE, projMatrix);
 
+    // creating cubes
+    const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
+    cubes = [];
+    for(let i = 0; i < 5000; i++) {
+        
+        cubes.push(new Cube([(Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 50, (Math.random() * 2 - 1) * 100], [(Math.random() * 2 - 1), (Math.random() * 2 - 1), (Math.random() * 2 - 1)]));
+    }
+
     // creates and enables vertex array, into a_position
     const a_position = gl.getAttribLocation(program, 'a_position');
-    const cubeVertexBuffer = createArrayBuffer(gl, geo_cubeVertices);
+    const cubeVertexBuffer = createArrayBuffer(gl, cube_vertices);
     
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
     gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, 0, 0);
@@ -93,21 +108,7 @@ function main() {
 
     // creates and enables texture vertex array, into a_texcoord
     const a_texcoord = gl.getAttribLocation(program, 'a_texcoord');
-    const textureCoordinates = [
-        // Front
-        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-        // Back
-        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-        // Top
-        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-        // Bottom
-        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-        // Right
-        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-        // Left
-        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-    ];
-    const texCoordBuffer = createArrayBuffer(gl, textureCoordinates);
+    const texCoordBuffer = createArrayBuffer(gl, cube_textureCoords);
     
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.vertexAttribPointer(a_texcoord, 2, gl.FLOAT, false, 0, 0);
@@ -130,7 +131,7 @@ function main() {
     });
 
     // creates index buffer
-    const cubeIndexBuffer = createIndexBuffer(gl, geo_cubeIndices);
+    const cubeIndexBuffer = createIndexBuffer(gl, cube_vertexIndices);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
 
     // handles input
@@ -143,16 +144,23 @@ function main() {
         }
     });
     document.addEventListener('keydown', (event) => {
-        player.processKeyPress(event.key);
+        if(document.pointerLockElement === canvas) {
+            player.processKeyPress(event.key);
+        }
     });
     document.addEventListener('keyup', (event) => {
-        player.processKeyRelease(event.key);
+        if(document.pointerLockElement === canvas) {
+            player.processKeyRelease(event.key);
+        }
     });
 
     draw(); 
     function draw() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.drawElements(gl.TRIANGLES, geo_cubeIndices.length, gl.UNSIGNED_SHORT, 0);
+        for(let i = 0; i < cubes.length; i++) {
+            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, cubes[i].matrix);
+            gl.drawElements(gl.TRIANGLES, cube_vertexIndices.length, gl.UNSIGNED_SHORT, 0);
+        }
 
         player.update(.1);
         player.camera.update(gl, u_mView, viewMatrix);

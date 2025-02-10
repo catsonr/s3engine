@@ -15,7 +15,7 @@ class Camera {
         this.fov = (45 * Math.PI) / 180;
         this.aspectRatio = WIDTH / HEIGHT;
         this.zNear = 0.1;
-        this.zFar = 100.0;
+        this.zFar = 1000.0;
 
         // camera angle stuff
         this.pitch = 0;
@@ -53,7 +53,7 @@ class Camera {
 }
 
 class Player {
-    constructor(x = 2, y = 0, z = -10) {
+    constructor(x = 0, y = 0, z = -5) {
         this.pos = vec3.fromValues(x, y, z);
 
         this.movementDir = vec3.create();
