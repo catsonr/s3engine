@@ -21,7 +21,7 @@ async function getObjData(path) {
     const normals = [0, 0, 0];
 
     const vertexIndexes = [];
-    const normalsIndexed = [];
+    const normalIndexes = [];
     
     for(let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
         const line = lines[lineIndex];
@@ -62,22 +62,17 @@ async function getObjData(path) {
                 }
             } else if(args.length == 4) { // pushes 6 new vertices
                 const quadIndices = [];
-                const textIndices = [];
                 const normIndices = [];
                 for(const arg of args) {
                     const indices = arg.split('/').map(n => parseInt(n));
                     quadIndices.push(indices[0]);
-                    textIndices.push(indices[1]);
                     normIndices.push(indices[2]);
                 }
                 vertexIndexes.push(quadIndices[0], quadIndices[1], quadIndices[2]);
                 vertexIndexes.push(quadIndices[0], quadIndices[2], quadIndices[3]);
 
-                console.log(normIndices);
-                // every normal of each vertex on a face
-                for(const index of normIndices) {
-                    console.log(normals[index * 3], normals[index * 3 + 1], normals[index * 3 + 2]);
-                }
+                normalIndexes.push(normIndices[0], normIndices[1], normIndices[2]);
+                normalIndexes.push(normIndices[0], normIndices[2], normIndices[3]);
             } else {
                 console.log('obj-parser.js: line', lineIndex + 1, 'with unexpected number of face indices (not a tri or quad). skipping...');
                 continue;
@@ -91,7 +86,17 @@ async function getObjData(path) {
         }
     }
 
-    for(let i = 0; i < vertexIndexes.length; i++) normalsIndexed.push(1, 1, 1);
 
-    return { name, vertices, normals, texcoords, vertexIndexes, normalsIndexed };
+    const verticesOut  = [];
+    const texcoordsOut = [];
+    const normalsOut   = [];
+
+    for(let i = 0; i < vertexIndexes.length; i++) {
+        const vIndex = vertexIndexes[i];
+        const nIndex = normalIndexes[i];
+        verticesOut.push(vertices[vIndex * 3], vertices[vIndex * 3 + 1], vertices[vIndex * 3 + 2] );
+        normalsOut.push(normals[nIndex * 3], normals[nIndex * 3 + 1], normals[nIndex * 3 + 2] );
+    }
+
+    return { name, verticesOut, normalsOut };
 }

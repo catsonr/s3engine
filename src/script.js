@@ -58,7 +58,10 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 
 let player = new Player();
 
-function main() {
+async function main() {
+    const obj = await getObjData('obj/cube.obj'); 
+    console.log(obj);
+
     // compiles shader code and creates shader program
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEXSHADERSOURCECODE);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENTSHADERSOURCECODE);
@@ -104,7 +107,7 @@ function main() {
 
     // creates and enables vertex array, into a_position
     const a_position = gl.getAttribLocation(program, 'a_position');
-    const cubeVertexBuffer = createArrayBuffer(gl, cube_vertices);
+    const cubeVertexBuffer = createArrayBuffer(gl, obj.verticesOut);
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
     gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_position);
@@ -112,7 +115,7 @@ function main() {
 
     // creates and enables vertex normals array, into a_normals
     const a_normals = gl.getAttribLocation(program, 'a_normals');
-    const normalsBuffer = createArrayBuffer(gl, cube_normals);
+    const normalsBuffer = createArrayBuffer(gl, obj.normalsOut);
     gl.bindBuffer(gl.ARRAY_BUFFER, normalsBuffer);
     gl.vertexAttribPointer(a_normals, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_normals);
