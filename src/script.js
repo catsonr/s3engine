@@ -58,8 +58,7 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 let player = new Player();
 
 async function main() {
-    const obj = await getObjData('obj/cone.obj'); 
-    console.log(obj);
+    const obj = await getObjData('obj/icosphere.obj'); 
 
     // compiles shader code and creates shader program
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEXSHADERSOURCECODE);
@@ -151,7 +150,7 @@ async function main() {
             mat4.rotate(mat, mat, 0.002 * cubes[i].rotationDir, [0, 0, 1]);
 
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, cubes[i].matrix);
-            gl.drawArrays(gl.TRIANGLES, 0, obj.faceCount * 3);
+            gl.drawArrays(gl.TRIANGLES, 0, obj.triCount * 3);
         }
 
         player.update(.1);
