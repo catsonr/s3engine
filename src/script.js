@@ -17,7 +17,6 @@ const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
 
     in vec3 a_position;
-    in vec2 a_texcoord;
     in vec3 a_normals;
 
     uniform mat4 u_mWorld;
@@ -26,11 +25,9 @@ const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
 
     uniform mat4 u_mInstance;
 
-    out vec2 v_texcoord;
     out vec3 v_normal;
 
     void main() {
-        v_texcoord = a_texcoord;
         v_normal = mat3((u_mWorld * u_mInstance)) * a_normals;
 
         gl_Position = u_mProj * u_mView * (u_mWorld * u_mInstance) * vec4(a_position, 1.0); 
@@ -62,8 +59,6 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 let player = new Player();
 
 function main() {
-    
-
     // compiles shader code and creates shader program
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEXSHADERSOURCECODE);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENTSHADERSOURCECODE);
@@ -115,14 +110,6 @@ function main() {
     gl.enableVertexAttribArray(a_position);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-    // creates and enables texture vertex array, into a_texcoord
-    const a_texcoord = gl.getAttribLocation(program, 'a_texcoord');
-    const texCoordBuffer = createArrayBuffer(gl, cube_textureCoords);
-    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-    gl.vertexAttribPointer(a_texcoord, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_texcoord);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
     // creates and enables vertex normals array, into a_normals
     const a_normals = gl.getAttribLocation(program, 'a_normals');
     const normalsBuffer = createArrayBuffer(gl, cube_normals);
@@ -130,25 +117,6 @@ function main() {
     gl.vertexAttribPointer(a_normals, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_normals);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-    // loads texture
-    let texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    // sets texture to solid yellow as placeholder while actual texture loads
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 245, 60, 255]));
-
-    let image = new Image();
-    image.src = "img/ahh.png";
-    image.addEventListener('load', function() {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        gl.generateMipmap(gl.TEXTURE_2D);
-    });
-
-    // creates index buffer
-    const cubeIndexBuffer = createIndexBuffer(gl, cube_vertexIndices);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
 
     // handles input
     canvas.addEventListener('click', (event) => {
@@ -181,7 +149,7 @@ function main() {
             mat4.rotate(mat, mat, Math.random() / 500 * cubes[i].rotationDir, [0, 1, 0]);
 
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, cubes[i].matrix);
-            gl.drawElements(gl.TRIANGLES, cube_vertexIndices.length, gl.UNSIGNED_SHORT, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, cube_vertices.length / 3);
         }
 
         player.update(.1);
