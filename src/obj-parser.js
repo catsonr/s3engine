@@ -14,6 +14,7 @@ async function getObjData(path) {
     const lines = text.split('\n');
 
     let name = "";
+    let faceCount = 0;
 
     // 0th element initialized since .obj indexes starting at 1
     const vertices = [0, 0, 0];
@@ -56,11 +57,14 @@ async function getObjData(path) {
         }
         else if(command == 'f') { // v/t/n
             if(args.length == 3) { // pushes 3 new vertices
+                faceCount++;
                 for(const arg of args) {
                     const indices = arg.split('/').map(n => parseInt(n));
                     vertexIndexes.push(indices[0]); // only taking vertex index for now
+                    normalIndexes.push(indices[2]);
                 }
             } else if(args.length == 4) { // pushes 6 new vertices
+                faceCount += 2;
                 const quadIndices = [];
                 const normIndices = [];
                 for(const arg of args) {
@@ -98,5 +102,5 @@ async function getObjData(path) {
         normalsOut.push(normals[nIndex * 3], normals[nIndex * 3 + 1], normals[nIndex * 3 + 2] );
     }
 
-    return { name, verticesOut, normalsOut };
+    return { name, faceCount, vertexIndexes, verticesOut, normalsOut };
 }

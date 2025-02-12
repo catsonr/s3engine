@@ -51,7 +51,6 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
         vec4 ambientLight = vec4(0.2, 0.2, 0.4, 1.0);
 
         outputColor = ambientLight + (vec4(1.0, 0.5, 0.7, 1.0) * light);
-        //outputColor = texture(u_texture, v_texcoord);
     }`;
 // --------------------------------------------------------------------------------
 // shader code end
@@ -59,7 +58,7 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 let player = new Player();
 
 async function main() {
-    const obj = await getObjData('obj/cube.obj'); 
+    const obj = await getObjData('obj/cone.obj'); 
     console.log(obj);
 
     // compiles shader code and creates shader program
@@ -101,9 +100,9 @@ async function main() {
     // creating cubes
     const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
     cubes = [];
-    //cubes.push(new Cube([0, 0, 0], [1, 1, 1]));
 
-   for(let i = 0; i < 1000; i++) cubes.push(new Cube([(Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 100], [1, 1, 1]));
+    cubes.push(new Cube([0, 0, 0], [1, 1, 1]));
+    //for(let i = 0; i < 1000; i++) cubes.push(new Cube([(Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 100, (Math.random() * 2 - 1) * 100], [1, 1, 1]));
 
     // creates and enables vertex array, into a_position
     const a_position = gl.getAttribLocation(program, 'a_position');
@@ -147,12 +146,12 @@ async function main() {
         for(let i = 0; i < cubes.length; i++) {
             let mat = cubes[i].matrix;
 
-            mat4.rotate(mat, mat, Math.random() / 500 * cubes[i].rotationDir, [1, 0, 0]);
-            mat4.rotate(mat, mat, Math.random() / 500 * cubes[i].rotationDir, [0, 0, 1]);
-            mat4.rotate(mat, mat, Math.random() / 500 * cubes[i].rotationDir, [0, 1, 0]);
+            mat4.rotate(mat, mat, 0.001 * cubes[i].rotationDir, [1, 0, 0]);
+            mat4.rotate(mat, mat, 0.005 * cubes[i].rotationDir, [0, 1, 0]);
+            mat4.rotate(mat, mat, 0.002 * cubes[i].rotationDir, [0, 0, 1]);
 
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, cubes[i].matrix);
-            gl.drawArrays(gl.TRIANGLES, 0, cube_vertices.length / 3);
+            gl.drawArrays(gl.TRIANGLES, 0, obj.faceCount * 3);
         }
 
         player.update(.1);
