@@ -31,16 +31,6 @@ function createArrayBuffer(gl, vertices) {
     return vertexBuffer;
 }
 
-function createIndexBuffer(gl, indices) {
-    const indexBuffer = gl.createBuffer();
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-    return indexBuffer;
-}
-
 function setVec3RotationX(out, v, angle) {
     const length = Math.hypot(v[0], v[1], v[2]);
     
