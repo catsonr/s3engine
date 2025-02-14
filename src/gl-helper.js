@@ -21,14 +21,25 @@ function createProgram(gl, vertexShader, fragmentShader) {
     gl.deleteProgram(program);
 }
 
-function createArrayBuffer(gl, vertices) {
-    const vertexBuffer = gl.createBuffer();
+function createArrayBuffer(gl) {
+    const arrayBuffer = gl.createBuffer();
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    return arrayBuffer;
+}
+
+function setArrayBufferData(gl, buffer, data) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    return vertexBuffer;
+}
+
+function enableAttribute(gl, attributeLocation, buffer, stride, startOffset = 0) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.vertexAttribPointer(attributeLocation, stride, gl.FLOAT, false, 0, gl.FLOAT * startOffset);
+    gl.enableVertexAttribArray(attributeLocation);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
 function setVec3RotationX(out, v, angle) {

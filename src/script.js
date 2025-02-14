@@ -16,7 +16,7 @@ const vec3  = glMatrix.vec3;
 const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
 
-    in vec3 a_position;
+    in vec3 a_positions;
     in vec3 a_normals;
 
     uniform mat4 u_mWorld;
@@ -30,7 +30,7 @@ const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
     void main() {
         v_normal = mat3((u_mWorld * u_mInstance)) * a_normals;
 
-        gl_Position = u_mProj * u_mView * (u_mWorld * u_mInstance) * vec4(a_position, 1.0); 
+        gl_Position = u_mProj * u_mView * (u_mWorld * u_mInstance) * vec4(a_positions, 1.0); 
     }`;
 
 const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
@@ -59,37 +59,43 @@ let player = new Player();
 
 async function main() {
     const currentObjectSrc = 'obj/icosphere.obj';
+    const alternateObjectSrc = 'obj/monkey.obj';
 
     await Obj.loadObj(currentObjectSrc);
+    await Obj.loadObj(alternateObjectSrc);
 
-    const CUBEREPLACE = new Obj([0, 0, 0], [1, 1, 1]);
-    CUBEREPLACE.setObjData(currentObjectSrc);
-    console.log('CUBEREPLACE:');
-    console.log(CUBEREPLACE);
+    const CURRENTOBJ = new Obj([0, 0, 0], [1, 1, 1]);
+    const ALTERNATEOBJ = new Obj([3, 3, 3], [2, 2, 5]);
 
-    const currentTriCount = CUBEREPLACE.data.triCount;
-    const currentVertices = CUBEREPLACE.data.verticesOut;
-    const currentNormals  = CUBEREPLACE.data.normalsOut;
-    const currentMatrix   = CUBEREPLACE.matrix;
+    CURRENTOBJ.setObjData(currentObjectSrc);
+    ALTERNATEOBJ.setObjData(alternateObjectSrc);
 
-    // compiles shader code and creates shader program
+    meshes = [];
+    meshes.push(CURRENTOBJ);
+    meshes.push(ALTERNATEOBJ);
+
+    let currentTriCount;
+    let currentVertices;
+    let currentNormals;
+    let currentMatrix;
+
+    // ----- creating shader program -----
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEXSHADERSOURCECODE);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENTSHADERSOURCECODE);
     const program = createProgram(gl, vertexShader, fragmentShader);
     gl.useProgram(program);
 
-    // fitting canvas to screen
+    // ----- setting up canvas -----
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
     gl.viewport(0, 0, WIDTH, HEIGHT);
 
-    // clearing stuff
     gl.clearColor(0.1, 0.1, 0.2, 1.0);
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
 
-
+    // ----- uniforms -----
     // world matrix
     const worldMatrix = mat4.create();
     const u_mWorld = gl.getUniformLocation(program, 'u_mWorld');
@@ -111,23 +117,18 @@ async function main() {
     // creating cubes
     const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
 
+    // ----- attributes -----
     // creates and enables vertex array, into a_position
-    const a_position = gl.getAttribLocation(program, 'a_position');
-    const cubeVertexBuffer = createArrayBuffer(gl, currentVertices);
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
-    gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_position);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    const a_positions = gl.getAttribLocation(program, 'a_positions');
+    const a_positions_BUFFER = createArrayBuffer(gl, currentVertices);
+    enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
 
     // creates and enables vertex normals array, into a_normals
     const a_normals = gl.getAttribLocation(program, 'a_normals');
-    const normalsBuffer = createArrayBuffer(gl, currentNormals);
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalsBuffer);
-    gl.vertexAttribPointer(a_normals, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_normals);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    const a_normals_BUFFER = createArrayBuffer(gl);
+    enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
 
-    // handles input
+    // ----- user input -----
     canvas.addEventListener('click', (event) => {
         canvas.requestPointerLock();
     });
@@ -151,9 +152,18 @@ async function main() {
     function draw() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        let mat = currentMatrix;
-        gl.uniformMatrix4fv(u_mInstance, gl.FALSE, mat);
-        gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+        for(let i = 0; i < meshes.length; i++) {
+            currentVertices = meshes[i].data.verticesOut;
+            currentNormals = meshes[i].data.normalsOut;
+            currentTriCount = meshes[i].data.triCount;
+            currentMatrix = meshes[i].matrix;
+
+            setArrayBufferData(gl, a_positions_BUFFER, currentVertices);
+            setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
+
+            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
+            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+        }
 
         player.update(.1);
         player.camera.update(gl, u_mView, viewMatrix);

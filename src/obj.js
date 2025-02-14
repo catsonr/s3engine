@@ -9,6 +9,7 @@ class Obj {
         const obj = await getObjData(path);
         this.objs.set(path, obj);
 
+        console.log('Obj: \'' + path + '\' loaded');
         return this.objs.get(path);
     }
 
