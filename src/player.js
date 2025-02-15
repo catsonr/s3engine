@@ -67,7 +67,7 @@ class Player {
         this.camera = new Camera(this.pos);
 
         // constants
-        this.movementSpeed = 1.0;
+        this.movementSpeed = 10.0;
         this.mouseSensitivity = 0.001;
     }
 

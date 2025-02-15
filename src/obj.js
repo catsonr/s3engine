@@ -1,5 +1,6 @@
 class Obj {
     static objs = new Map();
+    static objPaths = [];
 
     static async loadObj(path) {
         if (this.objs.has(path)) {
@@ -8,6 +9,7 @@ class Obj {
 
         const obj = await getObjData(path);
         this.objs.set(path, obj);
+        this.objPaths.push(path);
 
         console.log('Obj: \'' + path + '\' loaded');
         return this.objs.get(path);
@@ -24,10 +26,30 @@ class Obj {
 
         this.source = '';
         this.data = null;
+
+        // temporary
+        this.rotationAxis = [Math.round(Math.random()), Math.round(Math.random()), Math.round(Math.random())];
+        this.rotationAxis = [0, 0, 0];
+    }
+
+    update(dt) {
+        mat4.rotate(this.matrix, this.matrix, dt, this.rotationAxis);
     }
 
     setObjData(path) {
         this.source = path;
         this.data = Obj.objs.get(this.source);
+    }
+
+    setPos(pos = [0, 0, 0]) {
+        vec3.copy(this.pos, pos);
+
+        mat4.translate(this.matrix, this.matrix, this.pos);
+    }
+
+    setScale(scale = [1, 1, 1]) {
+        vec3.copy(this.scale, scale);
+        
+        mat4.scale(this.matrix, this.matrix, this.scale);
     }
 }

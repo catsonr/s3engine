@@ -58,22 +58,24 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 let player = new Player();
 
 async function main() {
-    const currentObjectSrc = 'obj/icosphere.obj';
-    const alternateObjectSrc = 'obj/monkey.obj';
-
-    await Obj.loadObj(currentObjectSrc);
-    await Obj.loadObj(alternateObjectSrc);
-
-    const CURRENTOBJ = new Obj([0, 0, 0], [1, 1, 1]);
-    const ALTERNATEOBJ = new Obj([3, 3, 3], [2, 2, 5]);
-
-    CURRENTOBJ.setObjData(currentObjectSrc);
-    ALTERNATEOBJ.setObjData(alternateObjectSrc);
+    await Obj.loadObj('obj/cone.obj');
+    await Obj.loadObj('obj/cube.obj');
+    await Obj.loadObj('obj/icosphere.obj');
+    await Obj.loadObj('obj/monitor.obj');
+    await Obj.loadObj('obj/monkey.obj');
+    await Obj.loadObj('obj/sharpswan.obj');
+    await Obj.loadObj('obj/rosalia.obj');
+    await Obj.loadObj('obj/miku.obj');
 
     meshes = [];
-    meshes.push(CURRENTOBJ);
-    meshes.push(ALTERNATEOBJ);
 
+    for(let i = 0; i < 100; i++) {
+        meshes.push(new Obj());
+
+        meshes[i].setObjData(Obj.objPaths[Math.floor(Math.random() * Obj.objPaths.length)]);
+        meshes[i].setPos([Math.random() * 100 - 50, Math.random() * 100 - 50, Math.random() * 100 - 50]);
+        //meshes[i].setScale([Math.random() * 2, Math.random() * 2, Math.random() * 2]);
+    }
     let currentTriCount;
     let currentVertices;
     let currentNormals;
@@ -148,8 +150,14 @@ async function main() {
         }
     });
 
-    draw(); 
-    function draw() {
+    let then = 0;
+
+    requestAnimationFrame(draw);
+
+    function draw(timestamp) {
+        const dt = (timestamp - then) / 1000;
+        then = timestamp;
+
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         for(let i = 0; i < meshes.length; i++) {
@@ -163,9 +171,11 @@ async function main() {
 
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
             gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+
+            meshes[i].update(dt);
         }
 
-        player.update(.1);
+        player.update(dt);
         player.camera.update(gl, u_mView, viewMatrix);
 
         requestAnimationFrame(draw);
