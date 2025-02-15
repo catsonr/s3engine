@@ -58,10 +58,12 @@ const SHADOWVERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
 
     in vec3 a_positions;
 
+    uniform mat4 u_mInstance;
     uniform mat4 u_mLightMVP;
 
     void main() {
-        gl_Position = u_mLightMVP * vec4(a_positions, 1);
+        gl_Position =   u_mInstance * vec4(a_positions, 1);
+        gl_Position = vec4(a_positions, 1);
     }
 
     `;
@@ -69,10 +71,10 @@ const SHADOWVERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
 const SHADOWFRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
 
-    out float fragDepth;
+    out vec4 outputColor;
 
     void main() {
-        fragDepth = gl_FragCoord.z;
+        outputColor = vec4(1.0 - gl_FragCoord.z, 1.0 - gl_FragCoord.z, 1.0 - gl_FragCoord.z, 1);
     }
 
     `;
@@ -107,16 +109,25 @@ async function main() {
     meshes.push(new Obj([0, 6, 13], [3, 3, 3]));
     meshes[meshCount++].setObjData('obj/miku.obj');
 
+    // x y z axes
+    meshes.push(new Obj([0, 0, 0], [1000, .1, .1]));
+    meshes[meshCount++].setObjData('obj/cube.obj');
+    meshes.push(new Obj([0, 0, 0], [.1, 1000, .1]));
+    meshes[meshCount++].setObjData('obj/cube.obj');
+    meshes.push(new Obj([0, 0, 0], [.1, .1, 1000]));
+    meshes[meshCount++].setObjData('obj/cube.obj');
+
     let currentTriCount;
     let currentVertices;
     let currentNormals;
     let currentMatrix;
+    let currentProgram;
 
     // ----- creating shader program(s) -----
     const program = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
-    const shadowProgram = createProgram(gl, SHADOWVERTEXSHADERSOURCECODE, SHADOWFRAGMENTSHADERSOURCECODE);
+    const shadow_program = createProgram(gl, SHADOWVERTEXSHADERSOURCECODE, SHADOWFRAGMENTSHADERSOURCECODE);
 
-    gl.useProgram(program);
+    currentProgram = shadow_program;
 
     // ----- setting up canvas -----
     canvas.width = WIDTH;
@@ -130,6 +141,7 @@ async function main() {
     gl.depthFunc(gl.LEQUAL);
 
     // ----- uniforms -----
+    gl.useProgram(program);
     // world matrix
     const worldMatrix = mat4.create();
     const u_mWorld = gl.getUniformLocation(program, 'u_mWorld');
@@ -154,13 +166,11 @@ async function main() {
     // ----- attributes -----
     // creates and enables vertex array, into a_positions
     const a_positions = gl.getAttribLocation(program, 'a_positions');
-    const a_positions_BUFFER = createArrayBuffer(gl, currentVertices);
-    enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
+    const a_positions_BUFFER = createArrayBuffer(gl);
 
     // creates and enables vertex normals array, into a_normals
     const a_normals = gl.getAttribLocation(program, 'a_normals');
     const a_normals_BUFFER = createArrayBuffer(gl);
-    enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
 
     // ----- user input -----
     canvas.addEventListener('click', (event) => {
@@ -182,8 +192,48 @@ async function main() {
         }
     });
 
+    // ----- shadow stuff -----
+    gl.useProgram(shadow_program);
+    const shadow_u_mInstance = gl.getUniformLocation(shadow_program, 'u_mInstance');
+    const shadow_u_mLightMVP = gl.getUniformLocation(shadow_program, 'u_mLightMVP');
+
+    const shadow_lightPos = vec3.fromValues(0, 0, 0);
+    const shadow_lightLookingAt = vec3.fromValues(0, 0, -1);
+
+    const shadow_lightZNear = 0.0000001;
+    const shadow_lightZFar = 5;
+
+    const shadow_lightPovView = mat4.create();
+    mat4.targetTo(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
+
+    const shadow_lightPovProj = mat4.create();
+    mat4.ortho(shadow_lightPovProj, -1, 1, -1, 1, shadow_lightZNear, shadow_lightZFar);
+
+    const shadow_lightPovMVP = mat4.create();
+    mat4.multiply(shadow_lightPovMVP, shadow_lightPovView, shadow_lightPovProj);
+    gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
+
+    const shadow_a_positions = gl.getAttribLocation(shadow_program, 'a_positions');
+    const shadow_a_positions_BUFFER = createArrayBuffer(gl);
+
+    /*
+    const shadow_depthTextureSize = [1024, 1024];
+    const shadow_depthTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, shadow_depthTextureSize[0], shadow_depthTextureSize[1]);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    // uncomment after getting main program to work
+    const shadow_depthFramebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadow_depthTexture, 0);
+    */
+
     let then = 0;
 
+    gl.useProgram(currentProgram);
     requestAnimationFrame(draw);
 
     function draw(timestamp) {
@@ -198,17 +248,31 @@ async function main() {
             currentTriCount = meshes[i].data.triCount;
             currentMatrix = meshes[i].matrix;
 
-            setArrayBufferData(gl, a_positions_BUFFER, currentVertices);
-            setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
+            if(currentProgram == program) {
+                enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
+                enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
 
-            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
+                setArrayBufferData(gl, a_positions_BUFFER, currentVertices);
+                setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
+
+                gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
+            }
+            else if(currentProgram == shadow_program) {
+                enableAttribute(gl, shadow_a_positions, shadow_a_positions_BUFFER, 3);
+
+                setArrayBufferData(gl, shadow_a_positions_BUFFER, currentVertices);
+
+                gl.uniformMatrix4fv(shadow_u_mInstance, gl.FALSE, currentMatrix);
+            }
+
             gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
-
             meshes[i].update(dt);
         }
 
-        player.update(dt);
-        player.camera.update(gl, u_mView, viewMatrix);
+        if(currentProgram == program) {
+            player.update(dt);
+            player.camera.update(gl, u_mView, viewMatrix);
+        }
 
         requestAnimationFrame(draw);
     }

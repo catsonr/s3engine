@@ -11,7 +11,7 @@ class Obj {
         this.objs.set(path, obj);
         this.objPaths.push(path);
 
-        console.log('Obj: \'' + path + '\' loaded');
+        //console.log('Obj: \'' + path + '\' loaded');
         return this.objs.get(path);
     }
 
