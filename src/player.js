@@ -4,7 +4,7 @@ class Camera {
         this.pos = pos; 
 
         // normal vector of direction camera is pointing
-        this.viewingDir = vec3.fromValues(0, 0, 1);
+        this.viewingDir = vec3.fromValues(-1, 0, 0);
 
         // point camera is looking at
         this.lookingAt = vec3.clone(pos);
@@ -53,7 +53,7 @@ class Camera {
 }
 
 class Player {
-    constructor(x = 0, y = 0, z = -5) {
+    constructor(x = 25, y = 0, z = 0) {
         this.pos = vec3.fromValues(x, y, z);
 
         this.movementDir = vec3.create();
@@ -84,6 +84,10 @@ class Player {
         if(key == 'd') {
             this.movement.D = true;
         }
+
+        // temp
+        if(key == ' ') { this.pos[1] += 1.0 }
+        else if(key == 'Shift') { this.pos[1] -= 1.0 }
     }
 
     processKeyRelease(key) {

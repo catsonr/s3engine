@@ -52,6 +52,31 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 
         outputColor = ambientLight + (vec4(1.0, 0.5, 0.7, 1.0) * light);
     }`;
+
+const SHADOWVERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
+    precision highp float;
+
+    in vec3 a_positions;
+
+    uniform mat4 u_mLightMVP;
+
+    void main() {
+        gl_Position = u_mLightMVP * vec4(a_positions, 1);
+    }
+
+    `;
+
+const SHADOWFRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
+    precision highp float;
+
+    out float fragDepth;
+
+    void main() {
+        fragDepth = gl_FragCoord.z;
+    }
+
+    `;
+
 // --------------------------------------------------------------------------------
 // shader code end
 
@@ -68,23 +93,29 @@ async function main() {
     await Obj.loadObj('obj/miku.obj');
 
     meshes = [];
+    let meshCount = 0;
 
-    for(let i = 0; i < 100; i++) {
-        meshes.push(new Obj());
+    meshes.push(new Obj([0, -2, 0], [20, 1, 20]));
+    meshes[meshCount++].setObjData('obj/cube.obj');
 
-        meshes[i].setObjData(Obj.objPaths[Math.floor(Math.random() * Obj.objPaths.length)]);
-        meshes[i].setPos([Math.random() * 100 - 50, Math.random() * 100 - 50, Math.random() * 100 - 50]);
-        //meshes[i].setScale([Math.random() * 2, Math.random() * 2, Math.random() * 2]);
-    }
+    meshes.push(new Obj([0, 0, 10], [10, 10, 1]));
+    meshes[meshCount++].setObjData('obj/cube.obj');
+
+    meshes.push(new Obj([0, 3, 5], [2, 2, 2]));
+    meshes[meshCount++].setObjData('obj/icosphere.obj');
+
+    meshes.push(new Obj([0, 6, 13], [3, 3, 3]));
+    meshes[meshCount++].setObjData('obj/miku.obj');
+
     let currentTriCount;
     let currentVertices;
     let currentNormals;
     let currentMatrix;
 
-    // ----- creating shader program -----
-    const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEXSHADERSOURCECODE);
-    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENTSHADERSOURCECODE);
-    const program = createProgram(gl, vertexShader, fragmentShader);
+    // ----- creating shader program(s) -----
+    const program = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
+    const shadowProgram = createProgram(gl, SHADOWVERTEXSHADERSOURCECODE, SHADOWFRAGMENTSHADERSOURCECODE);
+
     gl.useProgram(program);
 
     // ----- setting up canvas -----
@@ -95,6 +126,7 @@ async function main() {
     gl.clearColor(0.1, 0.1, 0.2, 1.0);
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
     gl.depthFunc(gl.LEQUAL);
 
     // ----- uniforms -----
@@ -120,7 +152,7 @@ async function main() {
     const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
 
     // ----- attributes -----
-    // creates and enables vertex array, into a_position
+    // creates and enables vertex array, into a_positions
     const a_positions = gl.getAttribLocation(program, 'a_positions');
     const a_positions_BUFFER = createArrayBuffer(gl, currentVertices);
     enableAttribute(gl, a_positions, a_positions_BUFFER, 3);

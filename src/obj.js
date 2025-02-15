@@ -26,14 +26,10 @@ class Obj {
 
         this.source = '';
         this.data = null;
-
-        // temporary
-        this.rotationAxis = [Math.round(Math.random()), Math.round(Math.random()), Math.round(Math.random())];
-        this.rotationAxis = [0, 0, 0];
     }
 
     update(dt) {
-        mat4.rotate(this.matrix, this.matrix, dt, this.rotationAxis);
+
     }
 
     setObjData(path) {
