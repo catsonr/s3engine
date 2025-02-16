@@ -39,7 +39,7 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     in vec2 v_texcoord;
     in vec3 v_normal;
 
-    uniform sampler2D u_texture;
+    uniform highp sampler2DShadow u_shadowMap;
 
     out vec4 outputColor;
 
@@ -62,11 +62,8 @@ const SHADOWVERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
     uniform mat4 u_mLightMVP;
 
     void main() {
-        gl_Position =   u_mInstance * vec4(a_positions, 1);
-        gl_Position = vec4(a_positions, 1);
-    }
-
-    `;
+        gl_Position = u_mLightMVP * u_mInstance * vec4(a_positions, 1);
+    }`;
 
 const SHADOWFRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
@@ -74,7 +71,8 @@ const SHADOWFRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     out vec4 outputColor;
 
     void main() {
-        outputColor = vec4(1.0 - gl_FragCoord.z, 1.0 - gl_FragCoord.z, 1.0 - gl_FragCoord.z, 1);
+        outputColor = vec4(vec3(pow(gl_FragCoord.z, 8.0)), 1);
+        //outputColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0);
     }
 
     `;
@@ -106,6 +104,7 @@ async function main() {
     meshes.push(new Obj([0, 3, 5], [2, 2, 2]));
     meshes[meshCount++].setObjData('obj/icosphere.obj');
 
+    /*
     meshes.push(new Obj([0, 6, 13], [3, 3, 3]));
     meshes[meshCount++].setObjData('obj/miku.obj');
 
@@ -116,6 +115,7 @@ async function main() {
     meshes[meshCount++].setObjData('obj/cube.obj');
     meshes.push(new Obj([0, 0, 0], [.1, .1, 1000]));
     meshes[meshCount++].setObjData('obj/cube.obj');
+    */
 
     let currentTriCount;
     let currentVertices;
@@ -127,6 +127,7 @@ async function main() {
     const program = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
     const shadow_program = createProgram(gl, SHADOWVERTEXSHADERSOURCECODE, SHADOWFRAGMENTSHADERSOURCECODE);
 
+    currentProgram = program;
     currentProgram = shadow_program;
 
     // ----- setting up canvas -----
@@ -160,8 +161,11 @@ async function main() {
     mat4.perspective(projMatrix, player.camera.fov, player.camera.aspectRatio, player.camera.zNear, player.camera.zFar);
     gl.uniformMatrix4fv(u_mProj, gl.FALSE, projMatrix);
 
-    // creating cubes
+    // obj instance translate scale matrix
     const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
+
+    // shadow map for fragment shader
+    const u_shadowMap = gl.getUniformLocation(program, 'u_shadowMap');
 
     // ----- attributes -----
     // creates and enables vertex array, into a_positions
@@ -197,26 +201,26 @@ async function main() {
     const shadow_u_mInstance = gl.getUniformLocation(shadow_program, 'u_mInstance');
     const shadow_u_mLightMVP = gl.getUniformLocation(shadow_program, 'u_mLightMVP');
 
-    const shadow_lightPos = vec3.fromValues(0, 0, 0);
-    const shadow_lightLookingAt = vec3.fromValues(0, 0, -1);
+    const shadow_lightPos = vec3.fromValues(10, 8, -10);
+    const shadow_lightLookingAt = vec3.fromValues(2, 2, 0);
 
-    const shadow_lightZNear = 0.0000001;
-    const shadow_lightZFar = 5;
+    const shadow_lightZNear = 1.0;
+    const shadow_lightZFar = 80;
 
     const shadow_lightPovView = mat4.create();
-    mat4.targetTo(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
+    mat4.lookAt(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
 
     const shadow_lightPovProj = mat4.create();
-    mat4.ortho(shadow_lightPovProj, -1, 1, -1, 1, shadow_lightZNear, shadow_lightZFar);
+    //mat4.ortho(shadow_lightPovProj, -10, 10, -10, 10, shadow_lightZNear, shadow_lightZFar);
+    mat4.perspective(shadow_lightPovProj, Math.PI / 4, WIDTH / HEIGHT, shadow_lightZNear, shadow_lightZFar);
 
     const shadow_lightPovMVP = mat4.create();
-    mat4.multiply(shadow_lightPovMVP, shadow_lightPovView, shadow_lightPovProj);
+    mat4.multiply(shadow_lightPovMVP, shadow_lightPovProj, shadow_lightPovView);
     gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
 
     const shadow_a_positions = gl.getAttribLocation(shadow_program, 'a_positions');
     const shadow_a_positions_BUFFER = createArrayBuffer(gl);
 
-    /*
     const shadow_depthTextureSize = [1024, 1024];
     const shadow_depthTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
@@ -225,11 +229,9 @@ async function main() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    // uncomment after getting main program to work
     const shadow_depthFramebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadow_depthTexture, 0);
-    */
+    //gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
+    //gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadow_depthTexture, 0);
 
     let then = 0;
 

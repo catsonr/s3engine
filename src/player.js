@@ -4,7 +4,7 @@ class Camera {
         this.pos = pos; 
 
         // normal vector of direction camera is pointing
-        this.viewingDir = vec3.fromValues(-1, 0, 0);
+        this.viewingDir = vec3.fromValues(0, 0, 1);
 
         // point camera is looking at
         this.lookingAt = vec3.clone(pos);
