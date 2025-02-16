@@ -51,22 +51,26 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     out vec4 outputColor;
 
     void main() {
-        vec3 lightdir = (u_lightdir);
-        vec3 normal   = normalize(v_normal);
+        vec3 lightdir = normalize(u_lightdir);
+        vec3 normal   = normalize(-v_normal);
 
         float light = dot(normal, lightdir);
         vec4 ambientLight = vec4(0.2, 0.2, 0.4, 1.0);
+        vec4 normalsColor = vec4(243.0 / 255.0, 241.0 / 255.0, 249.0 / 255.0, 1.0);
+        vec4 shadowColor  = vec4(0.1, 0.1, 0.2, 1.0);
 
         // shadow stuff
-        float bias = .0002;
-        vec3 lightPosInTexture = v_positionFromLightPOV.xyz * 0.5 + 0.5;
-        vec3 biased = lightPosInTexture - bias;
+        vec3 lightPosInTexture = (v_positionFromLightPOV.xyz / v_positionFromLightPOV.w) * 0.5 + 0.5;
+        float bias = 0.0;
 
         // if pixel is in shadow or not
-        float hitByLight = texture(u_shadowMap,  biased) == 0.0 ? 0.0 : 1.0;
+        float hitByLight = texture(u_shadowMap,  lightPosInTexture - bias) == 0.0 ? 0.0 : 1.0;
 
-        outputColor = ambientLight + (vec4(1.0, 0.5, 0.7, 1.0) * light);
+        outputColor = normalsColor * light;
         outputColor *= hitByLight;
+        outputColor += ambientLight;
+
+        outputColor = vec4(outputColor.rgb, 1.0);
     }`;
 
 const SHADOWVERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
@@ -88,7 +92,6 @@ const SHADOWFRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 
     void main() {
         outputColor = vec4(vec3(gl_FragCoord.z), 1);
-        //outputColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0);
     }
 
     `;
@@ -111,7 +114,7 @@ async function main() {
     meshes = [];
     let meshCount = 0;
 
-    meshes.push(new Obj([0, -2, 0], [20, 1, 20]));
+    meshes.push(new Obj([0, -2, 0], [100, 1, 100]));
     meshes[meshCount++].setObjData('obj/cube.obj');
 
     meshes.push(new Obj([0, 0, 10], [10, 10, 1]));
@@ -123,6 +126,7 @@ async function main() {
     meshes.push(new Obj([0, 6, 13], [3, 3, 3]));
     meshes[meshCount++].setObjData('obj/miku.obj');
 
+    /*
     // x y z axes
     meshes.push(new Obj([0, 0, 0], [1000, .1, .1]));
     meshes[meshCount++].setObjData('obj/cube.obj');
@@ -130,6 +134,12 @@ async function main() {
     meshes[meshCount++].setObjData('obj/cube.obj');
     meshes.push(new Obj([0, 0, 0], [.1, .1, 1000]));
     meshes[meshCount++].setObjData('obj/cube.obj');
+    */
+
+    for(let i = 0; i < 2; i++) {
+        meshes.push(new Obj([Math.random() * 100 - 50, Math.random() * 25, Math.random() * 100 - 50], [3, 3, 3]));
+        meshes[meshCount++].setObjData(Obj.objPaths[Math.floor(Math.random() * Obj.objPaths.length)]);
+    }
 
     let currentTriCount;
     let currentVertices;
@@ -160,42 +170,57 @@ async function main() {
     const shadow_u_mInstance = gl.getUniformLocation(shadow_program, 'u_mInstance');
     const shadow_u_mLightMVP = gl.getUniformLocation(shadow_program, 'u_mLightMVP');
 
-    const shadow_lightPos = vec3.fromValues(Math.random() * 10, Math.random() * 10, Math.random() * 10);
+    const shadow_lightPos = vec3.fromValues(50 + Math.random() * 200 - 100, Math.random() * 50, 50 + Math.random() * 200 - 100);
     const shadow_lightLookingAt = vec3.fromValues(0, 0, 0);
     const lightdir = vec3.create();
-    function setLightVMP() {
-
-    }
-    vec3.sub(lightdir, shadow_lightPos, shadow_lightLookingAt);
 
     const shadow_lightZNear = 0.1;
-    const shadow_lightZFar = 80;
+    const shadow_lightZFar = 300;
+    const shadow_orthoFrustum = [-80, 80, -80, 80];
 
     const shadow_lightPovView = mat4.create();
-    mat4.lookAt(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
-
     const shadow_lightPovProj = mat4.create();
-    mat4.ortho(shadow_lightPovProj, -50, 50, -50, 50, shadow_lightZNear, shadow_lightZFar);
-    //mat4.perspective(shadow_lightPovProj, Math.PI / 4, WIDTH / HEIGHT, shadow_lightZNear, shadow_lightZFar);
-
     const shadow_lightPovMVP = mat4.create();
-    mat4.multiply(shadow_lightPovMVP, shadow_lightPovProj, shadow_lightPovView);
-    gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
 
+    // setting light MVP matrix
+    function setLightMVP() {
+        vec3.set(lightdir, 0, 0, 0);
+        vec3.sub(lightdir, shadow_lightLookingAt, shadow_lightPos);
+        vec3.normalize(lightdir, lightdir);
+
+        mat4.lookAt(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
+        mat4.ortho(shadow_lightPovProj, ...shadow_orthoFrustum, shadow_lightZNear, shadow_lightZFar);
+        mat4.multiply(shadow_lightPovMVP, shadow_lightPovProj, shadow_lightPovView);
+        gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
+    }
+    setLightMVP();
+
+    meshes.push(new Obj(shadow_lightPos, [2, 2, 2]));
+    meshes[meshCount++].setObjData('obj/icosphere.obj');
+    const objdirPos = vec3.clone(shadow_lightPos);
+    vec3.add(objdirPos, objdirPos, lightdir);
+    vec3.add(objdirPos, objdirPos, lightdir);
+    vec3.add(objdirPos, objdirPos, lightdir);
+    vec3.add(objdirPos, objdirPos, lightdir);
+    vec3.add(objdirPos, objdirPos, lightdir);
+    vec3.add(objdirPos, objdirPos, lightdir);
+    meshes.push(new Obj(objdirPos, [1, 1, 1]));
+    meshes[meshCount++].setObjData('obj/icosphere.obj');
+
+    // finding a_positions attribute 
     const shadow_a_positions = gl.getAttribLocation(shadow_program, 'a_positions');
     const shadow_a_positions_BUFFER = createArrayBuffer(gl);
 
-    const shadow_depthTextureSize = [2 << 9, 2 << 9];
+    // setting up texture map
+    const shadow_depthTextureSize = [2 << 10, 2 << 10];
     const shadow_depthTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, shadow_depthTextureSize[0], shadow_depthTextureSize[1]);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, shadow_depthTextureSize[0], shadow_depthTextureSize[1]);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
     const shadow_depthFramebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadow_depthTexture, 0);
 
     // ----- main program stuff -----
     // ----- uniforms -----
@@ -263,31 +288,49 @@ async function main() {
 
 
     let then = 0;
+    let t = 0;
 
     requestAnimationFrame(draw);
 
     function draw(timestamp) {
         const dt = (timestamp - then) / 1000;
+        t += dt;
         then = timestamp;
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // render shadow map into texture
-        gl.useProgram(shadow_program);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
-        gl.viewport(0, 0, ...shadow_depthTextureSize);
+        //vec3.set(shadow_lightPos, 0, 0, 0);
+        // change shadowMVP
+        gl.useProgram(shadow_program)
+        setLightMVP();
+        // change lightdir
+        gl.useProgram(program);
+        gl.uniform3fv(u_lightdir, lightdir);
 
-        for(let i = 0; i < meshes.length; i++) {
-            currentVertices = meshes[i].data.verticesOut;
-            currentNormals = meshes[i].data.normalsOut;
-            currentTriCount = meshes[i].data.triCount;
-            currentMatrix = meshes[i].matrix;
 
-            enableAttribute(gl, shadow_a_positions, shadow_a_positions_BUFFER, 3);
-            setArrayBufferData(gl, shadow_a_positions_BUFFER, currentVertices);
-            gl.uniformMatrix4fv(shadow_u_mInstance, gl.FALSE, currentMatrix);
+        // renders depth map onto screen, and then into texture for main program
+        for(let i = 1; i < 2; i++) {
+            // render shadow map into texture
+            gl.useProgram(shadow_program);
+            if(i != 0) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadow_depthTexture, 0);
+            }
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            gl.viewport(0, 0, ...shadow_depthTextureSize);
 
-            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+            for(let i = 0; i < meshes.length; i++) {
+                currentVertices = meshes[i].data.verticesOut;
+                currentNormals = meshes[i].data.normalsOut;
+                currentTriCount = meshes[i].data.triCount;
+                currentMatrix = meshes[i].matrix;
+
+                enableAttribute(gl, shadow_a_positions, shadow_a_positions_BUFFER, 3);
+                setArrayBufferData(gl, shadow_a_positions_BUFFER, currentVertices);
+                gl.uniformMatrix4fv(shadow_u_mInstance, gl.FALSE, currentMatrix);
+
+                gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+            }
         }
 
         // render everything normally

@@ -62,12 +62,14 @@ class Player {
             A: false,
             S: false,
             D: false,
+            up: false,
+            down: false,
         };
 
         this.camera = new Camera(this.pos);
 
         // constants
-        this.movementSpeed = 10.0;
+        this.movementSpeed = 50.0;
         this.mouseSensitivity = 0.001;
     }
 
@@ -85,9 +87,8 @@ class Player {
             this.movement.D = true;
         }
 
-        // temp
-        if(key == ' ') { this.pos[1] += 1.0 }
-        else if(key == 'Shift') { this.pos[1] -= 1.0 }
+        if(key == ' ') this.movement.up = true;
+        if(key == 'Shift') this.movement.down = true;
     }
 
     processKeyRelease(key) {
@@ -103,6 +104,9 @@ class Player {
         if(key == 'd') {
             this.movement.D = false;
         }
+
+        if(key == ' ') this.movement.up = false;
+        if(key == 'Shift') this.movement.down = false;
     }
 
     processMouseMouse(event) {
@@ -129,5 +133,7 @@ class Player {
         // TODO: normalize ignoring Y component
         this.pos[0] += move[0];
         this.pos[2] += move[2];
+
+        this.pos[1] += Number(this.movement.up) - Number(this.movement.down);
     }
 }
