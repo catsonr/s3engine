@@ -20,9 +20,7 @@ class Obj {
         this.scale = vec3.fromValues(...scale);
 
         this.matrix = mat4.create();
-        mat4.identity(this.matrix);
-        mat4.translate(this.matrix, this.matrix, this.pos);
-        mat4.scale(this.matrix, this.matrix, this.scale);
+        this.generateInstanceMatrix();
 
         this.source = '';
         this.data = null;
@@ -40,12 +38,19 @@ class Obj {
     setPos(pos = [0, 0, 0]) {
         vec3.copy(this.pos, pos);
 
-        mat4.translate(this.matrix, this.matrix, this.pos);
+        this.generateInstanceMatrix();
     }
 
     setScale(scale = [1, 1, 1]) {
         vec3.copy(this.scale, scale);
         
+        this.generateInstanceMatrix();
+    }
+
+    generateInstanceMatrix() {
+        mat4.identity(this.matrix);
+        mat4.translate(this.matrix, this.matrix, this.pos);
         mat4.scale(this.matrix, this.matrix, this.scale);
+
     }
 }
