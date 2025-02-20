@@ -82,7 +82,6 @@ const SHADOWFRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     void main() {
         outputColor = vec4(vec3(gl_FragCoord.z), 1);
     }
-
     `;
 
 
@@ -92,32 +91,25 @@ const SHADOWFRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 const PIXELATE_VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
 
-    in vec4 a_positions;
-    in vec2 a_texcoord;
-
+    in vec2 a_positions;
     out vec2 v_texcoord;
 
-    uniform mat4 u_m; // positions texture (quad) on screen 
-
     void main() {
-        gl_Position = u_m * a_positions;
-        v_texcoord = a_texcoord;
+        gl_Position = vec4(a_positions, 0.0, 1.0);
+        v_texcoord = (a_positions + 1.0) * 0.5;
     }`;
 
 const PIXELATE_FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
 
     in vec2 v_texcoord;
-
     out vec4 outputColor;
 
     uniform sampler2D u_texture;
 
-
     void main() {
         outputColor = texture(u_texture, v_texcoord);
     }
-
     `;
 
 // --------------------------------------------------------------------------------

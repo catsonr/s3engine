@@ -49,11 +49,39 @@ async function main() {
     gl.depthFunc(gl.LEQUAL);
 
     // ----- creating shader programs -----
-    const program         = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
-    const shadow_program  = createProgram(gl, SHADOWVERTEXSHADERSOURCECODE, SHADOWFRAGMENTSHADERSOURCECODE);
+    const program          = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
+    const shadow_program   = createProgram(gl, SHADOWVERTEXSHADERSOURCECODE, SHADOWFRAGMENTSHADERSOURCECODE);
     const pixelate_program = createProgram(gl, PIXELATE_VERTEXSHADERSOURCECODE, PIXELATE_FRAGMENTSHADERSOURCECODE);
 
     // ----- pixelate program stuff -----
+    gl.useProgram(pixelate_program);
+    const pixelate_downscaleSize = [300, 400];
+    const pixelate_texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...pixelate_downscaleSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    const pixelate_depthTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, pixelate_depthTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, ...pixelate_downscaleSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    const pixelate_framebuffer = gl.createFramebuffer();
+
+    // finding a_positions attribute 
+    const pixelate_a_positions = gl.getAttribLocation(pixelate_program, 'a_positions');
+    const pixelate_a_positions_BUFFER = createArrayBuffer(gl);
+
+    const pixelate_quadVertices = [
+        -1, -1,
+        1, -1,
+        -1, 1,
+        1, 1,
+    ];
 
     // ----- shadow program stuff -----
     gl.useProgram(shadow_program);
@@ -112,7 +140,7 @@ async function main() {
     const shadow_depthTextureSize = [2 << 11, 2 << 11];
     const shadow_depthTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, shadow_depthTextureSize[0], shadow_depthTextureSize[1]);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, ...shadow_depthTextureSize);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -223,11 +251,14 @@ async function main() {
             gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
         }
 
-        // render everything normally
+        // render everything onto pixelate texture
         gl.useProgram(program);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, WIDTH, HEIGHT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, pixelate_framebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pixelate_texture, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, pixelate_depthTexture, 0);
         gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.viewport(0, 0, ...pixelate_downscaleSize);
         gl.uniform1i(u_shadowMap, 0);
         for(let i = 0; i < meshes.length; i++) {
             currentVertices = meshes[i].data.verticesOut;
@@ -245,6 +276,18 @@ async function main() {
             meshes[i].update(dt);
         }
 
+        // draw pixelated quad to screen (final pass )
+        gl.useProgram(pixelate_program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
+        gl.viewport(0, 0, WIDTH, HEIGHT);
+
+        enableAttribute(gl, pixelate_a_positions, pixelate_a_positions_BUFFER, 2);
+        setArrayBufferData(gl, pixelate_a_positions_BUFFER, pixelate_quadVertices);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        gl.useProgram(program);
         player.update(dt);
         player.camera.update(gl, u_mView, viewMatrix);
 
