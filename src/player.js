@@ -53,7 +53,7 @@ class Camera {
 }
 
 class Player {
-    constructor(x = 25, y = 0, z = 0) {
+    constructor(x = 0, y = 0, z = 0) {
         this.pos = vec3.fromValues(x, y, z);
 
         this.movementDir = vec3.create();
@@ -77,36 +77,36 @@ class Player {
         if(key == 'w') {
             this.movement.W = true;
         }
-        if(key == 'a') {
+        else if(key == 'a') {
             this.movement.A = true;
         }
-        if(key == 's') {
+        else if(key == 's') {
             this.movement.S = true;
         }
-        if(key == 'd') {
+        else if(key == 'd') {
             this.movement.D = true;
         }
 
-        if(key == ' ') this.movement.up = true;
-        if(key == 'Shift') this.movement.down = true;
+        else if(key == ' ') this.movement.up = true;
+        else if(key == 'Shift') this.movement.down = true;
     }
 
     processKeyRelease(key) {
         if(key == 'w') {
             this.movement.W = false;
         }
-        if(key == 'a') {
+        else if(key == 'a') {
             this.movement.A = false;
         }
-        if(key == 's') {
+        else if(key == 's') {
             this.movement.S = false;
         }
-        if(key == 'd') {
+        else if(key == 'd') {
             this.movement.D = false;
         }
 
-        if(key == ' ') this.movement.up = false;
-        if(key == 'Shift') this.movement.down = false;
+        else if(key == ' ') this.movement.up = false;
+        else if(key == 'Shift') this.movement.down = false;
     }
 
     processMouseMouse(event) {
