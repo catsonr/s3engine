@@ -11,9 +11,18 @@
         <div class="canvascontainer">
             <canvas id="s3canvas"></canvas>
             <div id="debug-overlay">
-                <div>t: <span id='t'></span></div>
-                <div>measure: <span id='measure'></span></div>
-                <div>beat: <span id='beat'></span></div>
+                <div id="debug-conductor">
+                    <h3>conductor</h1>
+                    <div>t: <span id='t'></span></div>
+                    <div>measure: <span id='measure'></span></div>
+                    <div>beat: <span id='beat'></span></div>
+                </div>
+                <div id="debug-beatbox">
+                    <h3>beatbox</h3>
+                    <div>rotation X: <span id='rotation-x'></span></div>
+                    <div>rotation Y: <span id='rotation-y'></span></div>
+                    <div>rotation Z: <span id='rotation-z'></span></div>
+                </div>
             </div>
         </div>
 
@@ -29,6 +38,8 @@
         <script src="src/player.js"></script>
 
         <script src="src/conductor.js"></script>
+
+        <script src="src/beatbox.js"></script>
 
         <script src="src/shaders.js"></script>
         <script src="src/script.js"></script>

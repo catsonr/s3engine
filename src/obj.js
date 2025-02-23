@@ -18,12 +18,7 @@ class Obj {
     constructor(pos = [0, 0, 0], scale = [1, 1, 1]) {
         this.pos = vec3.fromValues(...pos);
         this.scale = vec3.fromValues(...scale);
-
-        this.rotation = {
-            X: 0,
-            Y: 0,
-            Z: 0,
-        };
+        this.rotation = quat.create();
 
         this.matrix = mat4.create();
         this.generateInstanceMatrix();
@@ -53,21 +48,35 @@ class Obj {
         this.generateInstanceMatrix();
     }
 
-    setAxisRotation(axis, angle) {
-        // there's definitely a better way of doing this
-        if(axis == 'X') this.rotation.X = angle;
-        else if(axis == 'Y') this.rotation.Y = angle;
-        else this.rotation.Z = angle;
+    setAxisRotation(angleX, angleY, angleZ) {
+        const qx = quat.create();
+        const qy = quat.create();
+        const qz = quat.create();
 
-        this.generateInstanceMatrix(axis);
+        quat.setAxisAngle(qx, [1, 0, 0], angleX);
+        quat.setAxisAngle(qy, [0, 1, 0], angleY);
+        quat.setAxisAngle(qz, [0, 0, 1], angleZ);
+
+        quat.multiply(this.rotation, qx, qy);
+        quat.multiply(this.rotation, this.rotation, qz);
+
+        this.generateInstanceMatrix();
+    }
+
+    addAxisRotation(axis, angle) {
+        const q = quat.create();
+        quat.setAxisAngle(q, axis, angle);
+        quat.multiply(this.rotation, this.rotation, q);
+
+        this.generateInstanceMatrix();
     }
 
     generateInstanceMatrix() {
         mat4.identity(this.matrix);
 
-        mat4.rotateX(this.matrix, this.matrix, this.rotation.X);
-        mat4.rotateY(this.matrix, this.matrix, this.rotation.Y);
-        mat4.rotateZ(this.matrix, this.matrix, this.rotation.Z);
+        const rotationMatrix = mat4.create();
+        mat4.fromQuat(rotationMatrix, this.rotation);
+        mat4.multiply(this.matrix, this.matrix, rotationMatrix);
 
         mat4.translate(this.matrix, this.matrix, this.pos);
         mat4.scale(this.matrix, this.matrix, this.scale);

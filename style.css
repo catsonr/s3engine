@@ -12,15 +12,37 @@ html, head, body {
     position: relative;
     width: 100vw;
     height: 100vh;
+
+    z-index: 0;
 }
+
 #debug-overlay {
     position: absolute;
     top: 10px;
     left: 10px;
     right: auto;
-    background-color: rgba(0, 0, 0, 0.5);
     z-index: 100;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+#debug-overlay > div {
+    background-color: rgba(0, 0, 0, 0.5);
     padding: 5px;
+    border-radius: 5px;
+    position: relative;
+
+    display: inline-block;
+    white-space: nowrap;
+}
+#debug-overlay h3 {
+    margin: 0;
+    padding: 4px;
+    line-height: 1;
+
+    text-align: center;
 }
 
 canvas {

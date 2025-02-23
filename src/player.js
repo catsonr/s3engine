@@ -53,8 +53,8 @@ class Camera {
 }
 
 class Player {
-    constructor(x = 0, y = 0, z = 0) {
-        this.pos = vec3.fromValues(x, y, z);
+    constructor(pos = [0, 0, 0]) {
+        this.pos = vec3.fromValues(...pos);
 
         this.movementDir = vec3.create();
         this.movement = {

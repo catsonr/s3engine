@@ -7,10 +7,11 @@ const gl = canvas.getContext("webgl2");
 
 let audioContext;
 
-const mat4  = glMatrix.mat4;
-const vec3  = glMatrix.vec3;
+const mat4 = glMatrix.mat4;
+const vec3 = glMatrix.vec3;
+const quat = glMatrix.quat;
 
-let player = new Player();
+let player = new Player([0, 0, -10]);
 
 async function main() {
     await Obj.loadObj('obj/cone.obj');
@@ -27,25 +28,13 @@ async function main() {
     meshes = [];
     let meshCount = 0;
 
-    meshes.push(new Obj([0, 2, 25], [1, 1, 1]));
-    meshes[meshCount++].setObjData('obj/roundcube.obj');
+    const beatbox = new BeatBox();
+    beatbox.setObjData('obj/cube.obj');
 
-    meshes.push(new Obj([5, 15, 25], [25, 10, 0.1]));
-    meshes[meshCount].setAxisRotation("X", Math.PI / 6);
-    meshes[meshCount].setAxisRotation("Y", -Math.PI / 16);
-    meshes[meshCount].setAxisRotation("Z", -Math.PI / 30);
-    meshes[meshCount++].setObjData('obj/cube.obj');
+    meshes.push(beatbox);
+    meshCount++;
 
-    meshes.push(new Obj([5, 20, 25], [10, 15, 0.1]));
-    meshes[meshCount++].setObjData('obj/cube.obj');
-
-    meshes.push(new Obj([0, 0, 27], [30, 20, 0.1]));
-    meshes[meshCount++].setObjData('obj/cube.obj');
-
-    for(let i = 0; i < 3; i++) {
-        meshes.push(new Obj([Math.random() * 40 - 20, Math.random() * 40 - 20, 27 + (Math.random() - 0.5)], [1 - Math.random(), 1 - Math.random(), 1 - Math.random()]));
-        meshes[meshCount++].setObjData('obj/icosphere.obj');
-    }
+    console.log(beatbox);
 
     let currentTriCount;
     let currentVertices;
@@ -104,7 +93,7 @@ async function main() {
     const shadow_u_mLightMVP = gl.getUniformLocation(shadow_program, 'u_mLightMVP');
 
     const shadow_lightPos = vec3.fromValues(30, 30, -50);
-    const shadow_lightLookingAt = vec3.fromValues(...meshes[0].pos);
+    const shadow_lightLookingAt = vec3.fromValues(0, 0, 0);
     const lightdir = vec3.create();
 
     const shadow_lightZNear = 0.1;
@@ -253,6 +242,8 @@ async function main() {
         // keeps time
         conductor.stepdt(dt);
 
+        beatbox.setAxisRotation(0, 2, 1);
+
         // updates player and player's camera
         gl.useProgram(program);
         player.update(dt / 1000);
@@ -326,7 +317,8 @@ async function main() {
             setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
 
-            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+            if(meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
+            else gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
             meshes[i].update(dt);
         }
 
