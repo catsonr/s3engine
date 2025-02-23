@@ -19,6 +19,12 @@ class Obj {
         this.pos = vec3.fromValues(...pos);
         this.scale = vec3.fromValues(...scale);
 
+        this.rotation = {
+            X: 0,
+            Y: 0,
+            Z: 0,
+        };
+
         this.matrix = mat4.create();
         this.generateInstanceMatrix();
 
@@ -47,12 +53,22 @@ class Obj {
         this.generateInstanceMatrix();
     }
 
-    setAxisRotation(angle, axis) {
-        mat4.fromRotation(this.matrix, angle, axis);
+    setAxisRotation(axis, angle) {
+        // there's definitely a better way of doing this
+        if(axis == 'X') this.rotation.X = angle;
+        else if(axis == 'Y') this.rotation.Y = angle;
+        else this.rotation.Z = angle;
+
+        this.generateInstanceMatrix(axis);
     }
 
     generateInstanceMatrix() {
         mat4.identity(this.matrix);
+
+        mat4.rotateX(this.matrix, this.matrix, this.rotation.X);
+        mat4.rotateY(this.matrix, this.matrix, this.rotation.Y);
+        mat4.rotateZ(this.matrix, this.matrix, this.rotation.Z);
+
         mat4.translate(this.matrix, this.matrix, this.pos);
         mat4.scale(this.matrix, this.matrix, this.scale);
     }

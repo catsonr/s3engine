@@ -22,16 +22,32 @@ async function main() {
     await Obj.loadObj('obj/rosalia.obj');
     await Obj.loadObj('obj/miku.obj');
     await Obj.loadObj('obj/omar.obj');
+    await Obj.loadObj('obj/roundcube.obj');
+
+    readChart('charts/shellfie/playback.json');
 
     meshes = [];
     let meshCount = 0;
 
-    meshes.push(new Obj([0, 0, 30], [15, 10, 0.1]));
+    meshes.push(new Obj([0, 2, 25], [1, 1, 1]));
+    meshes[meshCount++].setObjData('obj/roundcube.obj');
+
+    meshes.push(new Obj([5, 15, 25], [25, 10, 0.1]));
+    meshes[meshCount].setAxisRotation("X", Math.PI / 6);
+    meshes[meshCount].setAxisRotation("Y", -Math.PI / 16);
+    meshes[meshCount].setAxisRotation("Z", -Math.PI / 30);
     meshes[meshCount++].setObjData('obj/cube.obj');
 
-    meshes.push(new Obj([0, 2, 25], [1, 1, 1]));
-    meshes[meshCount++].setObjData('obj/icosphere.obj');
+    meshes.push(new Obj([5, 20, 25], [10, 15, 0.1]));
+    meshes[meshCount++].setObjData('obj/cube.obj');
 
+    meshes.push(new Obj([0, 0, 27], [30, 20, 0.1]));
+    meshes[meshCount++].setObjData('obj/cube.obj');
+
+    for(let i = 0; i < 3; i++) {
+        meshes.push(new Obj([Math.random() * 40 - 20, Math.random() * 40 - 20, 27 + (Math.random() - 0.5)], [1 - Math.random(), 1 - Math.random(), 1 - Math.random()]));
+        meshes[meshCount++].setObjData('obj/icosphere.obj');
+    }
 
     let currentTriCount;
     let currentVertices;
@@ -89,7 +105,7 @@ async function main() {
     const shadow_u_mInstance = gl.getUniformLocation(shadow_program, 'u_mInstance');
     const shadow_u_mLightMVP = gl.getUniformLocation(shadow_program, 'u_mLightMVP');
 
-    const shadow_lightPos = vec3.fromValues(0, 0, 0);
+    const shadow_lightPos = vec3.fromValues(30, 30, -50);
     const shadow_lightLookingAt = vec3.fromValues(...meshes[0].pos);
     const lightdir = vec3.create();
 
@@ -119,7 +135,7 @@ async function main() {
 
         mat4.lookAt(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
         //mat4.ortho(shadow_lightPovProj, ...shadow_orthoFrustum, shadow_lightZNear, shadow_lightZFar);
-        mat4.perspective(shadow_lightPovProj, Math.PI / 4, WIDTH / HEIGHT, 0.1, 1000);
+        mat4.perspective(shadow_lightPovProj, Math.PI / 2, WIDTH / HEIGHT, 0.1, 1000);
         mat4.multiply(shadow_lightPovMVP, shadow_lightPovProj, shadow_lightPovView);
         gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
 
@@ -133,6 +149,7 @@ async function main() {
         vec3.add(objdirPos, objdirPos, lightdir);
         meshes[lightDirObjIndex].setPos(objdirPos);
     }
+    generateLightMVP();
 
     // finding a_positions attribute 
     const shadow_a_positions = gl.getAttribLocation(shadow_program, 'a_positions');
@@ -213,27 +230,33 @@ async function main() {
         }
     });
 
-
     let then = 0;
     let t = 0;
 
     let lastMeasureTime = 0.0;
+    let lastBeatTime = 0.0;
     let measure = 0;
-    let beats = 0;
+    let beat = 0;
 
-    const BPM = 120;
+    const BPM = 96.51 * 2;
     const beatspermeasure = 4;
     const measuredivision = 4;
 
-    const measuresPerMinute = BPM * (beatspermeasure * measuredivision);
-    const measuresPerMilisecond = measuresPerMinute / (60 * 1000);
+    const milisecondsPerMeasure = (60 * 1000 * beatspermeasure) / BPM;
 
     function update(t, dt) {
         // measure passed
-        if(t - lastMeasureTime > measuresPerMilisecond) {
+        if(t - lastMeasureTime > milisecondsPerMeasure) {
             measure++;
-            beats = 0;
+            beat = 0;
             lastMeasureTime = t;
+
+        } else {
+            if(t - lastBeatTime > milisecondsPerMeasure / measuredivision) {
+                beat++;
+                lastBeatTime = t;
+                console.log(measure, beat);
+            }
         }
 
         // sets position and direction of shadow light
@@ -243,8 +266,6 @@ async function main() {
         gl.useProgram(program);
         gl.uniform3fv(u_lightdir, lightdir);
         gl.uniformMatrix4fv(u_mLightPovMVP, false, shadow_lightPovMVP);
-
-        //meshes[0].setAxisRotation(Math.PI / 60, [1, 0, 0]);
     }
 
     function draw(timestamp) {

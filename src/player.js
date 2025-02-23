@@ -1,7 +1,7 @@
 class Camera {
     constructor(pos) {
         // position of camera
-        this.pos = pos; 
+        this.pos = pos;
 
         // normal vector of direction camera is pointing
         this.viewingDir = vec3.fromValues(0, 0, 1);
@@ -19,7 +19,7 @@ class Camera {
 
         // camera angle stuff
         this.pitch = 0;
-        this.yaw   = 0;
+        this.yaw = 0;
     }
 
     print() {
@@ -32,8 +32,8 @@ class Camera {
 
     update(gl, viewMatrixLocation, viewMatrix) {
         // prevent from tilting camera too low or too high
-        if(this.pitch >= Math.PI / 2) this.pitch = Math.PI / 2;
-        else if(this.pitch <= -Math.PI / 2) this.pitch = -Math.PI / 2;
+        if (this.pitch >= Math.PI / 2) this.pitch = Math.PI / 2;
+        else if (this.pitch <= -Math.PI / 2) this.pitch = -Math.PI / 2;
 
         // rotate camera based on pitch and yaw 
         setVec3RotationX(this.viewingDir, this.viewingDir, this.pitch);
@@ -74,44 +74,44 @@ class Player {
     }
 
     processKeyPress(key) {
-        if(key == 'w') {
+        if (key == 'w') {
             this.movement.W = true;
         }
-        else if(key == 'a') {
+        else if (key == 'a') {
             this.movement.A = true;
         }
-        else if(key == 's') {
+        else if (key == 's') {
             this.movement.S = true;
         }
-        else if(key == 'd') {
+        else if (key == 'd') {
             this.movement.D = true;
         }
 
-        else if(key == ' ') this.movement.up = true;
-        else if(key == 'Shift') this.movement.down = true;
+        else if (key == ' ') this.movement.up = true;
+        else if (key == 'Shift') this.movement.down = true;
     }
 
     processKeyRelease(key) {
-        if(key == 'w') {
+        if (key == 'w') {
             this.movement.W = false;
         }
-        else if(key == 'a') {
+        else if (key == 'a') {
             this.movement.A = false;
         }
-        else if(key == 's') {
+        else if (key == 's') {
             this.movement.S = false;
         }
-        else if(key == 'd') {
+        else if (key == 'd') {
             this.movement.D = false;
         }
 
-        else if(key == ' ') this.movement.up = false;
-        else if(key == 'Shift') this.movement.down = false;
+        else if (key == ' ') this.movement.up = false;
+        else if (key == 'Shift') this.movement.down = false;
     }
 
     processMouseMouse(event) {
         this.camera.pitch -= event.movementY * this.mouseSensitivity;
-        this.camera.yaw   -= event.movementX * this.mouseSensitivity;
+        this.camera.yaw -= event.movementX * this.mouseSensitivity;
     }
 
     update(dt) {
@@ -129,7 +129,7 @@ class Player {
 
         const move = vec3.create();
         vec3.add(move, forward, right);
-        
+
         // TODO: normalize ignoring Y component
         this.pos[0] += move[0];
         this.pos[2] += move[2];
