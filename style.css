@@ -8,19 +8,28 @@ html, head, body {
     font-family: monospace;
 }
 
+.canvascontainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+#debug-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    padding: 5px;
+}
+
 canvas {
     display: block;
     image-rendering: pixelated;
 }
-
 #shadercanvas {
     background-color: #78b53c;
 }
-
 div {
-    margin-left: 10px;
     color: white;
-}
-#errorbox {
-    color: red;
 }

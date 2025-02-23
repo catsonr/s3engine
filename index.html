@@ -8,7 +8,14 @@
     </head>
 
     <body>
-        <canvas id="s3canvas"></canvas>
+        <div class="canvascontainer">
+            <canvas id="s3canvas"></canvas>
+            <div id="debug-overlay">
+                <div>t: <span id='t'></span></div>
+                <div>measure: <span id='measure'></span></div>
+                <div>beat: <span id='beat'></span></div>
+            </div>
+        </div>
 
         <br><br>
         <script src="lib/gl-matrix-min.js"></script>
@@ -20,6 +27,8 @@
 
         <script src="src/obj.js"></script>
         <script src="src/player.js"></script>
+
+        <script src="src/conductor.js"></script>
 
         <script src="src/shaders.js"></script>
         <script src="src/script.js"></script>

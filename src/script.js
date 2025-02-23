@@ -24,8 +24,6 @@ async function main() {
     await Obj.loadObj('obj/omar.obj');
     await Obj.loadObj('obj/roundcube.obj');
 
-    readChart('charts/shellfie/playback.json');
-
     meshes = [];
     let meshCount = 0;
 
@@ -156,7 +154,7 @@ async function main() {
     const shadow_a_positions_BUFFER = createArrayBuffer(gl);
 
     // setting up texture map
-    const shadow_depthTextureSize = [2 << 11, 2 << 11];
+    const shadow_depthTextureSize = [2 << 12, 2 << 12];
     const shadow_depthTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
     gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, ...shadow_depthTextureSize);
@@ -230,34 +228,40 @@ async function main() {
         }
     });
 
+    let chartData = readChart('charts/shellfie/playback.json');
+    let chart = new Chart(chartData);
+    let conductor = new Conductor(chart);
+
+    // game loop time stuff
     let then = 0;
     let t = 0;
 
-    let lastMeasureTime = 0.0;
-    let lastBeatTime = 0.0;
-    let measure = 0;
-    let beat = 0;
+    // debug overlay stuff
+    let debug_tElement = document.querySelector('#t');
+    let debug_measureElement = document.querySelector('#measure');
+    let debug_beatElement = document.querySelector('#beat');
 
-    const BPM = 96.51 * 2;
-    const beatspermeasure = 4;
-    const measuredivision = 4;
+    let debug_tNode = document.createTextNode("");
+    let debug_measureNode = document.createTextNode("");
+    let debug_beatNode = document.createTextNode("");
 
-    const milisecondsPerMeasure = (60 * 1000 * beatspermeasure) / BPM;
+    debug_tElement.appendChild(debug_tNode);
+    debug_measureElement.appendChild(debug_measureNode);
+    debug_beatElement.appendChild(debug_beatNode);
 
     function update(t, dt) {
-        // measure passed
-        if(t - lastMeasureTime > milisecondsPerMeasure) {
-            measure++;
-            beat = 0;
-            lastMeasureTime = t;
+        // keeps time
+        conductor.stepdt(dt);
 
-        } else {
-            if(t - lastBeatTime > milisecondsPerMeasure / measuredivision) {
-                beat++;
-                lastBeatTime = t;
-                console.log(measure, beat);
-            }
-        }
+        // updates player and player's camera
+        gl.useProgram(program);
+        player.update(dt / 1000);
+        player.camera.update(gl, u_mView, viewMatrix);
+
+        // updates debug overlay
+        debug_tNode.nodeValue = Math.trunc(conductor.t) / 1000;
+        debug_measureNode.nodeValue = conductor.measure;
+        debug_beatNode.nodeValue = conductor.beat;
 
         // sets position and direction of shadow light
         vec3.set(shadow_lightPos, Math.sin(t / 1000) * 30, Math.sin(t / 10000) * 50, -40 + Math.sin(t / 3000) * 40);
@@ -273,7 +277,7 @@ async function main() {
         t += dt;
         then = timestamp;
 
-        update(t, dt / 1000);
+        update(t, dt);
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -336,10 +340,6 @@ async function main() {
         setArrayBufferData(gl, pixelate_a_positions_BUFFER, pixelate_quadVertices);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-        gl.useProgram(program);
-        player.update(dt / 1000);
-        player.camera.update(gl, u_mView, viewMatrix);
 
         requestAnimationFrame(draw);
     }
