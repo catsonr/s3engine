@@ -5,6 +5,8 @@ const canvasName = "s3canvas";
 const canvas = document.getElementById(canvasName);
 const gl = canvas.getContext("webgl2");
 
+let audioContext;
+
 const mat4  = glMatrix.mat4;
 const vec3  = glMatrix.vec3;
 
@@ -24,13 +26,12 @@ async function main() {
     meshes = [];
     let meshCount = 0;
 
-    meshes.push(new Obj([0, -2, 0], [100, 1, 100]));
+    meshes.push(new Obj([0, 0, 30], [15, 10, 0.1]));
     meshes[meshCount++].setObjData('obj/cube.obj');
 
-    for(let i = 0; i < 50; i++) {
-        meshes.push(new Obj([Math.random() * 200 - 100, Math.random() * 50, Math.random() * 200 - 100], [1, 1, 1]));
-        meshes[meshCount++].setObjData(Obj.objPaths[Math.floor(Math.random() * Obj.objPaths.length)]);
-    }
+    meshes.push(new Obj([0, 2, 25], [1, 1, 1]));
+    meshes[meshCount++].setObjData('obj/icosphere.obj');
+
 
     let currentTriCount;
     let currentVertices;
@@ -55,7 +56,7 @@ async function main() {
 
     // ----- pixelate program stuff -----
     gl.useProgram(pixelate_program);
-    const pixelate_downscaleSize = [300, 400];
+    const pixelate_downscaleSize = [400, 300];
     const pixelate_texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...pixelate_downscaleSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -88,8 +89,8 @@ async function main() {
     const shadow_u_mInstance = gl.getUniformLocation(shadow_program, 'u_mInstance');
     const shadow_u_mLightMVP = gl.getUniformLocation(shadow_program, 'u_mLightMVP');
 
-    const shadow_lightPos = vec3.fromValues(0, 100, -100);
-    const shadow_lightLookingAt = vec3.fromValues(0, 0, 0);
+    const shadow_lightPos = vec3.fromValues(0, 0, 0);
+    const shadow_lightLookingAt = vec3.fromValues(...meshes[0].pos);
     const lightdir = vec3.create();
 
     const shadow_lightZNear = 0.1;
@@ -105,7 +106,7 @@ async function main() {
     meshes.push(lightPosObj);
     meshes[meshCount++].setObjData('obj/icosphere.obj');
 
-    const lightDirObj = new Obj([0, 0, 0], [.1, .1, .1]);
+    const lightDirObj = new Obj([0, 0, 0], [1, 1, 1]);
     const lightDirObjIndex = meshCount;
     meshes.push(lightDirObj);
     meshes[meshCount++].setObjData('obj/icosphere.obj');
@@ -117,7 +118,8 @@ async function main() {
         vec3.normalize(lightdir, lightdir);
 
         mat4.lookAt(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
-        mat4.ortho(shadow_lightPovProj, ...shadow_orthoFrustum, shadow_lightZNear, shadow_lightZFar);
+        //mat4.ortho(shadow_lightPovProj, ...shadow_orthoFrustum, shadow_lightZNear, shadow_lightZFar);
+        mat4.perspective(shadow_lightPovProj, Math.PI / 4, WIDTH / HEIGHT, 0.1, 1000);
         mat4.multiply(shadow_lightPovMVP, shadow_lightPovProj, shadow_lightPovView);
         gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
 
@@ -159,8 +161,8 @@ async function main() {
     // view matrix
     const viewMatrix = mat4.create();
     const u_mView = gl.getUniformLocation(program, 'u_mView');
-    mat4.lookAt(viewMatrix, player.camera.pos, player.camera.lookingAt, player.camera.up);
     player.camera.update(gl, u_mView, viewMatrix);
+    mat4.lookAt(viewMatrix, player.camera.pos, player.camera.lookingAt, player.camera.up);
 
     // projection matrix
     const projMatrix = mat4.create();
@@ -211,27 +213,50 @@ async function main() {
         }
     });
 
+
     let then = 0;
     let t = 0;
 
-    requestAnimationFrame(draw);
+    let lastMeasureTime = 0.0;
+    let measure = 0;
+    let beats = 0;
 
-    function draw(timestamp) {
-        const dt = (timestamp - then) / 1000;
-        t += dt;
-        then = timestamp;
+    const BPM = 120;
+    const beatspermeasure = 4;
+    const measuredivision = 4;
 
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    const measuresPerMinute = BPM * (beatspermeasure * measuredivision);
+    const measuresPerMilisecond = measuresPerMinute / (60 * 1000);
 
-        vec3.set(shadow_lightPos, ...player.pos);
-        // change shadowMVP
+    function update(t, dt) {
+        // measure passed
+        if(t - lastMeasureTime > measuresPerMilisecond) {
+            measure++;
+            beats = 0;
+            lastMeasureTime = t;
+        }
+
+        // sets position and direction of shadow light
+        vec3.set(shadow_lightPos, Math.sin(t / 1000) * 30, Math.sin(t / 10000) * 50, -40 + Math.sin(t / 3000) * 40);
         gl.useProgram(shadow_program)
         generateLightMVP()
-        // change lightdir
         gl.useProgram(program);
         gl.uniform3fv(u_lightdir, lightdir);
         gl.uniformMatrix4fv(u_mLightPovMVP, false, shadow_lightPovMVP);
 
+        //meshes[0].setAxisRotation(Math.PI / 60, [1, 0, 0]);
+    }
+
+    function draw(timestamp) {
+        const dt = (timestamp - then);
+        t += dt;
+        then = timestamp;
+
+        update(t, dt / 1000);
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // renders shadow map
         gl.useProgram(shadow_program);
         gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadow_depthTexture, 0);
@@ -239,6 +264,10 @@ async function main() {
         gl.viewport(0, 0, ...shadow_depthTextureSize);
 
         for (let i = 0; i < meshes.length; i++) {
+            // temp: skips light direction obj and light obj from being drawn to shadow texture
+            // i.e., the camera balls dont cast shadow
+            if(i == lightDirObjIndex || i == lightPosObjIndex) continue;
+
             currentVertices = meshes[i].data.verticesOut;
             currentNormals = meshes[i].data.normalsOut;
             currentTriCount = meshes[i].data.triCount;
@@ -288,11 +317,14 @@ async function main() {
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         gl.useProgram(program);
-        player.update(dt);
+        player.update(dt / 1000);
         player.camera.update(gl, u_mView, viewMatrix);
 
         requestAnimationFrame(draw);
     }
+
+    // starts drawing loop
+    requestAnimationFrame(draw);
 }
 
 main();

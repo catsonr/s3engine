@@ -47,10 +47,13 @@ class Obj {
         this.generateInstanceMatrix();
     }
 
+    setAxisRotation(angle, axis) {
+        mat4.fromRotation(this.matrix, angle, axis);
+    }
+
     generateInstanceMatrix() {
         mat4.identity(this.matrix);
         mat4.translate(this.matrix, this.matrix, this.pos);
         mat4.scale(this.matrix, this.matrix, this.scale);
-
     }
 }

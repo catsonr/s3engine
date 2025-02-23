@@ -47,14 +47,14 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
         vec4 shadowColor  = vec4(0.1, 0.1, 0.2, 1.0);
 
         vec3 lightPosInTexture = (v_positionFromLightPOV.xyz / v_positionFromLightPOV.w) * 0.5 + 0.5;
-        float bias = 0.02;
+        float bias = 0.0013;
+        bias = 0.00001;
 
-        // if pixel is in shadow or not
         float hitByLight = texture(u_shadowMap,  lightPosInTexture - bias) == 0.0 ? 0.0 : 1.0;
 
-        outputColor = normalsColor * light;
-        outputColor += ambientLight;
+        outputColor = normalsColor * light * hitByLight;
 
+        outputColor + ambientLight;
         outputColor = vec4(outputColor.rgb, 1.0);
     }`;
 
