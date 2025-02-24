@@ -5,13 +5,15 @@ const canvasName = "s3canvas";
 const canvas = document.getElementById(canvasName);
 const gl = canvas.getContext("webgl2");
 
-let audioContext;
-
 const mat4 = glMatrix.mat4;
 const vec3 = glMatrix.vec3;
 const quat = glMatrix.quat;
 
-let player = new Player([0, 0, -10]);
+const X_AXIS = vec3.fromValues(1, 0, 0);
+const Y_AXIS = vec3.fromValues(0, 1, 0);
+const Z_AXIS = vec3.fromValues(0, 0, 1);
+
+let player = new Player([0, 0, -5]);
 
 async function main() {
     await Obj.loadObj('obj/cone.obj');
@@ -31,10 +33,10 @@ async function main() {
     const beatbox = new BeatBox();
     beatbox.setObjData('obj/cube.obj');
 
+    beatbox.setPos([0, 0, 0]);
+
     meshes.push(beatbox);
     meshCount++;
-
-    console.log(beatbox);
 
     let currentTriCount;
     let currentVertices;
@@ -226,33 +228,45 @@ async function main() {
     let t = 0;
 
     // debug overlay stuff
-    let debug_tElement = document.querySelector('#t');
-    let debug_measureElement = document.querySelector('#measure');
-    let debug_beatElement = document.querySelector('#beat');
+    // finds spans for debug variables
+    const debug_tElement = document.querySelector('#t');
+    const debug_measureElement = document.querySelector('#measure');
+    const debug_beatElement = document.querySelector('#beat');
 
-    let debug_tNode = document.createTextNode("");
-    let debug_measureNode = document.createTextNode("");
-    let debug_beatNode = document.createTextNode("");
+    const debug_bbRotationXElement = document.querySelector('#rotation-x');
+    const debug_bbRotationYElement = document.querySelector('#rotation-y');
+    const debug_bbRotationZElement = document.querySelector('#rotation-z');
 
+    // creates nodes to hold variables
+    const debug_tNode = document.createTextNode("");
+    const debug_measureNode = document.createTextNode("");
+    const debug_beatNode = document.createTextNode("");
+
+    const debug_bbRotationXNode = document.createTextNode("");
+    const debug_bbRotationYNode = document.createTextNode("");
+    const debug_bbRotationZNode = document.createTextNode("");
+
+    // links nodes to spans
     debug_tElement.appendChild(debug_tNode);
     debug_measureElement.appendChild(debug_measureNode);
     debug_beatElement.appendChild(debug_beatNode);
 
+    debug_bbRotationXElement.appendChild(debug_bbRotationXNode);
+    debug_bbRotationYElement.appendChild(debug_bbRotationYNode);
+    debug_bbRotationZElement.appendChild(debug_bbRotationZNode);
+
     function update(t, dt) {
         // keeps time
         conductor.stepdt(dt);
-
-        beatbox.setAxisRotation(0, 2, 1);
 
         // updates player and player's camera
         gl.useProgram(program);
         player.update(dt / 1000);
         player.camera.update(gl, u_mView, viewMatrix);
 
-        // updates debug overlay
-        debug_tNode.nodeValue = Math.trunc(conductor.t) / 1000;
-        debug_measureNode.nodeValue = conductor.measure;
-        debug_beatNode.nodeValue = conductor.beat;
+        beatbox.addRotation(X_AXIS, Math.PI / 360);
+        beatbox.addRotation(Y_AXIS, Math.PI / 360 / 2);
+        beatbox.addRotation(Z_AXIS, Math.PI / 360 / 4);
 
         // sets position and direction of shadow light
         vec3.set(shadow_lightPos, Math.sin(t / 1000) * 30, Math.sin(t / 10000) * 50, -40 + Math.sin(t / 3000) * 40);
@@ -261,6 +275,15 @@ async function main() {
         gl.useProgram(program);
         gl.uniform3fv(u_lightdir, lightdir);
         gl.uniformMatrix4fv(u_mLightPovMVP, false, shadow_lightPovMVP);
+        
+        // updates debug overlay
+        debug_tNode.nodeValue = (conductor.t / 1000).toFixed(3);
+        debug_measureNode.nodeValue = conductor.measure;
+        debug_beatNode.nodeValue = conductor.beat;
+
+        debug_bbRotationXNode.nodeValue = beatbox.rotation.x.toFixed(2);
+        debug_bbRotationYNode.nodeValue = beatbox.rotation.y.toFixed(2);
+        debug_bbRotationZNode.nodeValue = beatbox.rotation.z.toFixed(2);
     }
 
     function draw(timestamp) {
