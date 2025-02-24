@@ -18,9 +18,8 @@ class Obj {
     constructor(pos = [0, 0, 0], scale = [1, 1, 1]) {
         this.pos = vec3.fromValues(...pos);
         this.scale = vec3.fromValues(...scale);
-        this.rotationQuat = quat.create();
 
-        this.rotation = { x: 0, y: 0, z: 0 };
+        this.rotation = { x: 0, y: 0, z: 0, quat: quat.create()};
 
         this.matrix = mat4.create();
         this.generateInstanceMatrix();
@@ -63,20 +62,28 @@ class Obj {
         quat.setAxisAngle(qy, [0, 1, 0], this.rotation.y);
         quat.setAxisAngle(qz, [0, 0, 1], this.rotation.z);
 
-        quat.multiply(this.rotationQuat, qx, qy);
-        quat.multiply(this.rotationQuat, this.rotationQuat, qz);
+        quat.multiply(this.rotation.quat, qx, qy);
+        quat.multiply(this.rotation.quat, this.rotation.quat, qz);
 
         this.generateInstanceMatrix();
     }
 
-    addRotation(axis = 0, angle = 0) {
+    addRotation(axis = [0, 0, 0], angle = 0) {
         this.rotation.x += angle * axis[0];
         this.rotation.y += angle * axis[1];
         this.rotation.z += angle * axis[2];
 
         const q = quat.create();
         quat.setAxisAngle(q, axis, angle);
-        quat.multiply(this.rotationQuat, this.rotationQuat, q);
+        quat.multiply(this.rotation.quat, this.rotation.quat, q);
+
+        this.generateInstanceMatrix();
+    }
+
+    // TODO: find way to add quaternion's angle to obj's angle
+    addRotationFromQuat(q) {
+        console.warn('new quat not included in obj rotation angles');
+        quat.multiply(this.rotation.quat, this.rotation.quat, q);
 
         this.generateInstanceMatrix();
     }
@@ -87,7 +94,7 @@ class Obj {
         mat4.translate(this.matrix, this.matrix, this.pos);
 
         const rotationMatrix = mat4.create();
-        mat4.fromQuat(rotationMatrix, this.rotationQuat);
+        mat4.fromQuat(rotationMatrix, this.rotation.quat);
         mat4.multiply(this.matrix, this.matrix, rotationMatrix);
 
         mat4.scale(this.matrix, this.matrix, this.scale);

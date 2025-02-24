@@ -201,7 +201,13 @@ async function main() {
 
     // ----- user input -----
     canvas.addEventListener('click', (event) => {
-        canvas.requestPointerLock();
+        //canvas.requestPointerLock();
+    });
+    canvas.addEventListener('mousedown', (event) => {
+        beatbox.processMouseDown(event);
+    });
+    canvas.addEventListener('mouseup', (event) => {
+        beatbox.processMouseUp(event);
     });
     canvas.addEventListener('mousemove', (event) => {
         if(document.pointerLockElement === canvas) {
@@ -264,17 +270,15 @@ async function main() {
         player.update(dt / 1000);
         player.camera.update(gl, u_mView, viewMatrix);
 
-        beatbox.addRotation(X_AXIS, Math.PI / 360);
-        beatbox.addRotation(Y_AXIS, Math.PI / 360 / 2);
-        beatbox.addRotation(Z_AXIS, Math.PI / 360 / 4);
-
         // sets position and direction of shadow light
+        /*
         vec3.set(shadow_lightPos, Math.sin(t / 1000) * 30, Math.sin(t / 10000) * 50, -40 + Math.sin(t / 3000) * 40);
         gl.useProgram(shadow_program)
         generateLightMVP()
         gl.useProgram(program);
         gl.uniform3fv(u_lightdir, lightdir);
         gl.uniformMatrix4fv(u_mLightPovMVP, false, shadow_lightPovMVP);
+        */
         
         // updates debug overlay
         debug_tNode.nodeValue = (conductor.t / 1000).toFixed(3);
@@ -340,7 +344,8 @@ async function main() {
             setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
 
-            if(meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
+            // temp: draws beatbox as line segment
+            if(!meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
             else gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
             meshes[i].update(dt);
         }
