@@ -109,7 +109,7 @@ class Player {
         else if (key == 'Shift') this.movement.down = false;
     }
 
-    processMouseMouse(event) {
+    processMouseMove(event) {
         this.camera.pitch -= event.movementY * this.mouseSensitivity;
         this.camera.yaw -= event.movementX * this.mouseSensitivity;
     }

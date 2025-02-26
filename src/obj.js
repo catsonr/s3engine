@@ -81,9 +81,18 @@ class Obj {
     }
 
     // TODO: find way to add quaternion's angle to obj's angle
-    addRotationFromQuat(q) {
-        console.warn('new quat not included in obj rotation angles');
-        quat.multiply(this.rotation.quat, this.rotation.quat, q);
+    // this multiplication order is "backwards", but it makes the arcball work. just FYI .
+    addRotationFromQuat(q, angleX = undefined, angleY = undefined, angleZ = undefined) {
+        if(angleX == undefined || angleY == undefined || angleZ == undefined) {
+            console.warn('new quat not included in obj rotation angles');
+        }
+        else {
+            this.rotation.x += angleX;
+            this.rotation.y += angleY;
+            this.rotation.z += angleZ;
+        }
+
+        quat.multiply(this.rotation.quat, q, this.rotation.quat);
 
         this.generateInstanceMatrix();
     }

@@ -27,21 +27,21 @@ async function main() {
     await Obj.loadObj('obj/omar.obj');
     await Obj.loadObj('obj/roundcube.obj');
 
-    meshes = [];
-    let meshCount = 0;
-
-    const beatbox = new BeatBox();
-    beatbox.setObjData('obj/cube.obj');
-
-    beatbox.setPos([0, 0, 0]);
-
-    meshes.push(beatbox);
-    meshCount++;
-
     let currentTriCount;
     let currentVertices;
     let currentNormals;
     let currentMatrix;
+    let currentScene;
+
+    const beatboxScene = new Scene();
+    currentScene = beatboxScene;
+
+    let meshCount = 0;
+
+    const beatbox = new BeatBox();
+    beatbox.setObjData('obj/cube.obj');
+    currentScene.meshes.push(beatbox);
+    meshCount++;
 
     // ----- setting up canvas -----
     canvas.width = WIDTH;
@@ -61,7 +61,7 @@ async function main() {
 
     // ----- pixelate program stuff -----
     gl.useProgram(pixelate_program);
-    const pixelate_downscaleSize = [400, 300];
+    const pixelate_downscaleSize = [WIDTH, HEIGHT];
     const pixelate_texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...pixelate_downscaleSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -108,13 +108,13 @@ async function main() {
 
     const lightPosObj = new Obj([0, 0, 0], [3, 3, 3]);
     const lightPosObjIndex = meshCount;
-    meshes.push(lightPosObj);
-    meshes[meshCount++].setObjData('obj/icosphere.obj');
+    currentScene.meshes.push(lightPosObj);
+    currentScene.meshes[meshCount++].setObjData('obj/icosphere.obj');
 
     const lightDirObj = new Obj([0, 0, 0], [1, 1, 1]);
     const lightDirObjIndex = meshCount;
-    meshes.push(lightDirObj);
-    meshes[meshCount++].setObjData('obj/icosphere.obj');
+    currentScene.meshes.push(lightDirObj);
+    currentScene.meshes[meshCount++].setObjData('obj/icosphere.obj');
 
     // sets lightMVP matrix, lightdir uniform, and positions 'light' object(s)
     function generateLightMVP() {
@@ -128,7 +128,7 @@ async function main() {
         mat4.multiply(shadow_lightPovMVP, shadow_lightPovProj, shadow_lightPovView);
         gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
 
-        meshes[lightPosObjIndex].setPos(shadow_lightPos);
+        currentScene.meshes[lightPosObjIndex].setPos(shadow_lightPos);
         const objdirPos = vec3.clone(shadow_lightPos);
         vec3.add(objdirPos, objdirPos, lightdir);
         vec3.add(objdirPos, objdirPos, lightdir);
@@ -136,7 +136,7 @@ async function main() {
         vec3.add(objdirPos, objdirPos, lightdir);
         vec3.add(objdirPos, objdirPos, lightdir);
         vec3.add(objdirPos, objdirPos, lightdir);
-        meshes[lightDirObjIndex].setPos(objdirPos);
+        currentScene.meshes[lightDirObjIndex].setPos(objdirPos);
     }
     generateLightMVP();
 
@@ -145,7 +145,7 @@ async function main() {
     const shadow_a_positions_BUFFER = createArrayBuffer(gl);
 
     // setting up texture map
-    const shadow_depthTextureSize = [2 << 12, 2 << 12];
+    const shadow_depthTextureSize = [1 << 12, 1 << 12];
     const shadow_depthTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
     gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, ...shadow_depthTextureSize);
@@ -201,7 +201,8 @@ async function main() {
 
     // ----- user input -----
     canvas.addEventListener('click', (event) => {
-        //canvas.requestPointerLock();
+        return;
+        canvas.requestPointerLock();
     });
     canvas.addEventListener('mousedown', (event) => {
         beatbox.processMouseDown(event);
@@ -211,8 +212,10 @@ async function main() {
     });
     canvas.addEventListener('mousemove', (event) => {
         if(document.pointerLockElement === canvas) {
-            player.processMouseMouse(event);
+            player.processMouseMove(event);
         }
+
+        beatbox.processMouseMove(event);
     });
     document.addEventListener('keydown', (event) => {
         if(document.pointerLockElement === canvas) {
@@ -306,15 +309,15 @@ async function main() {
         gl.clear(gl.DEPTH_BUFFER_BIT);
         gl.viewport(0, 0, ...shadow_depthTextureSize);
 
-        for (let i = 0; i < meshes.length; i++) {
+        for (let i = 0; i < currentScene.meshes.length; i++) {
             // temp: skips light direction obj and light obj from being drawn to shadow texture
             // i.e., the camera balls dont cast shadow
             if(i == lightDirObjIndex || i == lightPosObjIndex) continue;
 
-            currentVertices = meshes[i].data.verticesOut;
-            currentNormals = meshes[i].data.normalsOut;
-            currentTriCount = meshes[i].data.triCount;
-            currentMatrix = meshes[i].matrix;
+            currentVertices = currentScene.meshes[i].data.verticesOut;
+            currentNormals = currentScene.meshes[i].data.normalsOut;
+            currentTriCount = currentScene.meshes[i].data.triCount;
+            currentMatrix = currentScene.meshes[i].matrix;
 
             enableAttribute(gl, shadow_a_positions, shadow_a_positions_BUFFER, 3);
             setArrayBufferData(gl, shadow_a_positions_BUFFER, currentVertices);
@@ -332,11 +335,11 @@ async function main() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.viewport(0, 0, ...pixelate_downscaleSize);
         gl.uniform1i(u_shadowMap, 0);
-        for(let i = 0; i < meshes.length; i++) {
-            currentVertices = meshes[i].data.verticesOut;
-            currentNormals = meshes[i].data.normalsOut;
-            currentTriCount = meshes[i].data.triCount;
-            currentMatrix = meshes[i].matrix;
+        for(let i = 0; i < currentScene.meshes.length; i++) {
+            currentVertices = currentScene.meshes[i].data.verticesOut;
+            currentNormals = currentScene.meshes[i].data.normalsOut;
+            currentTriCount = currentScene.meshes[i].data.triCount;
+            currentMatrix = currentScene.meshes[i].matrix;
 
             enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
             enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
@@ -345,9 +348,9 @@ async function main() {
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
 
             // temp: draws beatbox as line segment
-            if(!meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
+            if(currentScene.meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
             else gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
-            meshes[i].update(dt);
+            currentScene.meshes[i].update(dt);
         }
 
         // draw pixelated quad to screen (final pass )

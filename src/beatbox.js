@@ -3,45 +3,69 @@ class BeatBox extends Obj {
         super();
 
         this.lastDown = {x: 0, y: 0, t: 0};
+        this.mouseDown = false;
 
         this.mouseSensitivity = 0.005;
         this.clamp = 50.0;
     }
 
     processMouseDown(event) {
-        this.lastDown.x = event.screenX;
-        this.lastDown.y = event.screenY;
+        this.lastDown.x = event.clientX;
+        this.lastDown.y = event.clientY;
         this.lastDown.t = event.timeStamp;
+
+        this.mouseDown = true;
     }
 
     processMouseUp(event) {
-        let dx = event.screenX - this.lastDown.x;
-        let dy = event.screenY - this.lastDown.y;
-        let dt = event.timeStamp - this.lastDown.t;
-
-        if(Math.abs(dx) < this.clamp) dx = 0;
-        if(Math.abs(dy) < this.clamp) dy = 0;
-
-        const q = this.getRotationQuat(dx, dy, dt);
-        this.addRotationFromQuat(q);
+        this.mouseDown = false;
     }
 
-    // this will add the angles the quaternion describes to beatbox' rotation angle values
-    // i.e., you must use this quat if you generate it
-    getRotationQuat(dx, dy, dt) {
-        const dampenFactor = 0.10;
-        const angleX = dx * this.mouseSensitivity * dampenFactor;
-        const angleY = -dy * this.mouseSensitivity * dampenFactor;
+    processMouseMove(event) {
+        if(this.mouseDown) {
+            const q = this.calculateArcballDeltaQuat([this.lastDown.x, this.lastDown.y], [event.clientX, event.clientY]);
+            this.addRotationFromQuat(q);
 
-        const localUp = vec3.fromValues(0, 1, 0);
-        vec3.transformQuat(localUp, localUp, this.rotation.quat);
+            this.lastDown.x = event.clientX;
+            this.lastDown.y = event.clientY;
+            this.lastDown.t = event.timeStamp;
+        }
+    }
 
-        const localRight = vec3.fromValues(1, 0, 0);
-        vec3.transformQuat(localRight, localRight, this.rotation.quat);
+    // takes in screen coordinates (2d) and returns corresponding point on arcball (3d)
+    // assumes the arcball is centered on the screen 
+    screenPosToArcballPos(screenPos = []) {
+        const r = 1;
+        const rSquared = r * r;
 
-        const qLocalUp = quat.setAxisAngle(quat.create(), localUp, angleX);
-        const qLocalRight = quat.setAxisAngle(quat.create(), localRight, angleY);
+        let x = (2 * screenPos[0] - WIDTH) / WIDTH;
+        let y = (2 * screenPos[1] - HEIGHT) / HEIGHT;
+        let z = 0;
 
-        return quat.multiply(quat.create(), qLocalUp, qLocalRight);
+        const lengthSquared = x * x + y * y;
+        if(lengthSquared <= rSquared / 2) {
+            z = Math.sqrt(rSquared - x * x - y * y);
+        }
+        else {
+            z = (rSquared / 2) / Math.sqrt(lengthSquared);
+        }
+
+        return vec3.fromValues(x, y, z);
+    }
+
+    calculateArcballDeltaQuat(initialScreenPos, currentScreenPos) {
+        const v0 = this.screenPosToArcballPos(initialScreenPos);
+        const v1 = this.screenPosToArcballPos(currentScreenPos);
+
+        const angleDampenFactor = 1;
+
+        const rotationAxis = vec3.create();
+        vec3.cross(rotationAxis, v0, v1);
+        vec3.normalize(rotationAxis, rotationAxis);
+
+        const dot = Math.min(1, Math.max(-1, vec3.dot(v0, v1)));
+        const angle = Math.acos(dot) * angleDampenFactor;
+
+        return quat.setAxisAngle(quat.create(), rotationAxis, angle);
     }
 }
