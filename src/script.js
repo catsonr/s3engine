@@ -242,31 +242,37 @@ async function main() {
     const debug_measureElement = document.querySelector('#measure');
     const debug_beatElement = document.querySelector('#beat');
 
-    const debug_bbRotationXElement = document.querySelector('#rotation-x');
-    const debug_bbRotationYElement = document.querySelector('#rotation-y');
-    const debug_bbRotationZElement = document.querySelector('#rotation-z');
+    const debug_bbQuatWElement = document.querySelector('#beatbox-quatw');
+    const debug_bbQuatIElement = document.querySelector('#beatbox-quati');
+    const debug_bbQuatJElement = document.querySelector('#beatbox-quatj');
+    const debug_bbQuatKElement = document.querySelector('#beatbox-quatk');
 
     // creates nodes to hold variables
     const debug_tNode = document.createTextNode("");
     const debug_measureNode = document.createTextNode("");
     const debug_beatNode = document.createTextNode("");
 
-    const debug_bbRotationXNode = document.createTextNode("");
-    const debug_bbRotationYNode = document.createTextNode("");
-    const debug_bbRotationZNode = document.createTextNode("");
+    const debug_bbQuatWNode = document.createTextNode("");
+    const debug_bbQuatINode = document.createTextNode("");
+    const debug_bbQuatJNode = document.createTextNode("");
+    const debug_bbQuatKNode = document.createTextNode("");
 
     // links nodes to spans
     debug_tElement.appendChild(debug_tNode);
     debug_measureElement.appendChild(debug_measureNode);
     debug_beatElement.appendChild(debug_beatNode);
 
-    debug_bbRotationXElement.appendChild(debug_bbRotationXNode);
-    debug_bbRotationYElement.appendChild(debug_bbRotationYNode);
-    debug_bbRotationZElement.appendChild(debug_bbRotationZNode);
+    debug_bbQuatWElement.appendChild(debug_bbQuatWNode);
+    debug_bbQuatIElement.appendChild(debug_bbQuatINode);
+    debug_bbQuatJElement.appendChild(debug_bbQuatJNode);
+    debug_bbQuatKElement.appendChild(debug_bbQuatKNode);
 
     function update(t, dt) {
         // keeps time
         conductor.stepdt(dt);
+
+        const bbScaleAdd = (conductor.beat + 1) / conductor.chart.beatspermeasure / 4;
+        beatbox.setScale([1 + bbScaleAdd, 1 + bbScaleAdd, 1 + bbScaleAdd]);
 
         // updates player and player's camera
         gl.useProgram(program);
@@ -288,9 +294,10 @@ async function main() {
         debug_measureNode.nodeValue = conductor.measure;
         debug_beatNode.nodeValue = conductor.beat;
 
-        debug_bbRotationXNode.nodeValue = beatbox.rotation.x.toFixed(2);
-        debug_bbRotationYNode.nodeValue = beatbox.rotation.y.toFixed(2);
-        debug_bbRotationZNode.nodeValue = beatbox.rotation.z.toFixed(2);
+        debug_bbQuatWNode.nodeValue = beatbox.rotationQuat[0].toFixed(3);
+        debug_bbQuatINode.nodeValue = beatbox.rotationQuat[1].toFixed(3);
+        debug_bbQuatJNode.nodeValue = beatbox.rotationQuat[2].toFixed(3);
+        debug_bbQuatKNode.nodeValue = beatbox.rotationQuat[3].toFixed(3);
     }
 
     function draw(timestamp) {

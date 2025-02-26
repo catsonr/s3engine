@@ -24,7 +24,7 @@ class BeatBox extends Obj {
     processMouseMove(event) {
         if(this.mouseDown) {
             const q = this.calculateArcballDeltaQuat([this.lastDown.x, this.lastDown.y], [event.clientX, event.clientY]);
-            this.addRotationFromQuat(q);
+            this.addRotationFromQuatREVERSE(q);
 
             this.lastDown.x = event.clientX;
             this.lastDown.y = event.clientY;
