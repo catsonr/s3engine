@@ -55,3 +55,11 @@ canvas {
 div {
     color: white;
 }
+
+input[type="checkbox"] {
+    transform: scale(1.5);
+    vertical-align: middle;
+    width: 1em;
+    height: 1em;
+    margin-left: 0px;
+}

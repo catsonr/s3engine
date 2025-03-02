@@ -61,7 +61,7 @@ async function main() {
 
     // ----- pixelate program stuff -----
     gl.useProgram(pixelate_program);
-    const pixelate_downscaleSize = [WIDTH, HEIGHT];
+    const pixelate_downscaleSize = [300, 400];
     const pixelate_texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...pixelate_downscaleSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -201,8 +201,7 @@ async function main() {
 
     // ----- user input -----
     canvas.addEventListener('click', (event) => {
-        return;
-        canvas.requestPointerLock();
+        //canvas.requestPointerLock();
     });
     canvas.addEventListener('mousedown', (event) => {
         beatbox.processMouseDown(event);
@@ -228,7 +227,7 @@ async function main() {
         }
     });
 
-    let chartData = readChart('charts/shellfie/playback.json');
+    let chartData = await readChart('charts/triple-baka/playback.json');
     let chart = new Chart(chartData);
     let conductor = new Conductor(chart);
 
@@ -267,28 +266,23 @@ async function main() {
     debug_bbQuatJElement.appendChild(debug_bbQuatJNode);
     debug_bbQuatKElement.appendChild(debug_bbQuatKNode);
 
+    document.getElementById("debug-playing-checkbox").addEventListener("change", function() {
+        if(this.checked) conductor.start();
+        else conductor.stop();
+    });
+    document.getElementById("debug-metronome-checkbox").addEventListener("change", function() {
+        conductor.metronome = this.checked;
+    });
+
     function update(t, dt) {
         // keeps time
         conductor.stepdt(dt);
-
-        const bbScaleAdd = (conductor.beat + 1) / conductor.chart.beatspermeasure / 4;
-        beatbox.setScale([1 + bbScaleAdd, 1 + bbScaleAdd, 1 + bbScaleAdd]);
 
         // updates player and player's camera
         gl.useProgram(program);
         player.update(dt / 1000);
         player.camera.update(gl, u_mView, viewMatrix);
 
-        // sets position and direction of shadow light
-        /*
-        vec3.set(shadow_lightPos, Math.sin(t / 1000) * 30, Math.sin(t / 10000) * 50, -40 + Math.sin(t / 3000) * 40);
-        gl.useProgram(shadow_program)
-        generateLightMVP()
-        gl.useProgram(program);
-        gl.uniform3fv(u_lightdir, lightdir);
-        gl.uniformMatrix4fv(u_mLightPovMVP, false, shadow_lightPovMVP);
-        */
-        
         // updates debug overlay
         debug_tNode.nodeValue = (conductor.t / 1000).toFixed(3);
         debug_measureNode.nodeValue = conductor.measure;
@@ -355,7 +349,7 @@ async function main() {
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
 
             // temp: draws beatbox as line segment
-            if(currentScene.meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
+            if(!currentScene.meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
             else gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
             currentScene.meshes[i].update(dt);
         }

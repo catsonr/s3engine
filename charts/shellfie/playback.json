@@ -1,9 +1,11 @@
 {
+    "bgm_source": "/charts/shellfie/shellfie-instant-start.wav",
+    "offset": 0,
     "0": {
         "0": {
             "commands": [
                 ["bpm", "96.51"],
-                ["beats", "3"],
+                ["beats", "4"],
                 ["bardivision", "4"]
             ],
             "notes": ["W"]

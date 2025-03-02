@@ -1,0 +1,12 @@
+{
+    "bgm_source": "charts/triple-baka/bgm.wav",
+    "bgm_offset": 30,
+    "offset": 100,
+    "m0": {
+        "commands": [
+            ["bpm", 180],
+            ["beats", "4"],
+            ["bardivision", "4"]
+        ]
+    }
+}
