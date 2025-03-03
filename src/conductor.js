@@ -35,6 +35,7 @@ class Chart {
         this.milisecondsPerBeat = this.milisecondsPerMeasure / this.measuredivision;
 
         console.log('measure', measureIndex, measure);
+        console.log(this);
     }
 }
 

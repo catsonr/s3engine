@@ -237,6 +237,8 @@ async function main() {
 
     // debug overlay stuff
     // finds spans for debug variables
+    const debug_fpsElement = document.querySelector('#debug-fps');
+
     const debug_tElement = document.querySelector('#debug-t');
     const debug_measureElement = document.querySelector('#debug-measure');
     const debug_beatElement = document.querySelector('#debug-beat');
@@ -250,6 +252,8 @@ async function main() {
     const debug_bbQuatKElement = document.querySelector('#beatbox-quatk');
 
     // creates nodes to hold variables
+    const debug_fpsNode = document.createTextNode("");
+
     const debug_tNode = document.createTextNode("");
     const debug_measureNode = document.createTextNode("");
     const debug_beatNode = document.createTextNode("");
@@ -263,6 +267,8 @@ async function main() {
     const debug_bbQuatKNode = document.createTextNode("");
 
     // links nodes to spans
+    debug_fpsElement.appendChild(debug_fpsNode);
+
     debug_tElement.appendChild(debug_tNode);
     debug_measureElement.appendChild(debug_measureNode);
     debug_beatElement.appendChild(debug_beatNode);
@@ -293,6 +299,8 @@ async function main() {
         player.camera.update(gl, u_mView, viewMatrix);
 
         // updates debug overlay
+        debug_fpsNode.nodeValue = (1000 / dt).toFixed(1);
+
         debug_tNode.nodeValue = (conductor.t / 1000).toFixed(3);
         debug_measureNode.nodeValue = conductor.measure;
         debug_beatNode.nodeValue = conductor.beat;
