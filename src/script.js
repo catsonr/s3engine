@@ -237,9 +237,12 @@ async function main() {
 
     // debug overlay stuff
     // finds spans for debug variables
-    const debug_tElement = document.querySelector('#t');
-    const debug_measureElement = document.querySelector('#measure');
-    const debug_beatElement = document.querySelector('#beat');
+    const debug_tElement = document.querySelector('#debug-t');
+    const debug_measureElement = document.querySelector('#debug-measure');
+    const debug_beatElement = document.querySelector('#debug-beat');
+    const debug_bpmElement = document.querySelector('#debug-bpm');
+    const debug_beatspermeasureElement = document.querySelector('#debug-beatspermeasure');
+    const debug_measuredivisionElement = document.querySelector('#debug-measuredivision');
 
     const debug_bbQuatWElement = document.querySelector('#beatbox-quatw');
     const debug_bbQuatIElement = document.querySelector('#beatbox-quati');
@@ -250,6 +253,9 @@ async function main() {
     const debug_tNode = document.createTextNode("");
     const debug_measureNode = document.createTextNode("");
     const debug_beatNode = document.createTextNode("");
+    const debug_bpmNode = document.createTextNode("");
+    const debug_beatspermeasureNode = document.createTextNode("");
+    const debug_measuredivisionNode = document.createTextNode("");
 
     const debug_bbQuatWNode = document.createTextNode("");
     const debug_bbQuatINode = document.createTextNode("");
@@ -260,6 +266,9 @@ async function main() {
     debug_tElement.appendChild(debug_tNode);
     debug_measureElement.appendChild(debug_measureNode);
     debug_beatElement.appendChild(debug_beatNode);
+    debug_bpmElement.appendChild(debug_bpmNode);
+    debug_beatspermeasureElement.appendChild(debug_beatspermeasureNode);
+    debug_measuredivisionElement.appendChild(debug_measuredivisionNode);
 
     debug_bbQuatWElement.appendChild(debug_bbQuatWNode);
     debug_bbQuatIElement.appendChild(debug_bbQuatINode);
@@ -287,6 +296,9 @@ async function main() {
         debug_tNode.nodeValue = (conductor.t / 1000).toFixed(3);
         debug_measureNode.nodeValue = conductor.measure;
         debug_beatNode.nodeValue = conductor.beat;
+        debug_bpmNode.nodeValue = conductor.chart.BPM;
+        debug_beatspermeasureNode.nodeValue = conductor.chart.beatspermeasure;
+        debug_measuredivisionNode.nodeValue = conductor.chart.measuredivision;
 
         debug_bbQuatWNode.nodeValue = beatbox.rotationQuat[0].toFixed(3);
         debug_bbQuatINode.nodeValue = beatbox.rotationQuat[1].toFixed(3);
