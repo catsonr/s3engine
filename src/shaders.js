@@ -41,8 +41,8 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
         vec3 normal = normalize(-v_normal);
         vec3 lightdir = normalize(u_lightdir);
 
-        float diffuseAmount = max(dot(normal, lightdir), 0.0);
-        vec3 ambientLight = vec3(0.2, 0.2, 0.4);
+        float diffuseAmount = u_alpha >= 1.0 ? max(dot(normal, lightdir), 0.0) : 1.0;
+        vec3 ambientLight = vec3(0.05, 0.05, 0.1);
 
         vec3 currentColor = u_color * u_alpha * diffuseAmount;
         currentColor = ambientLight + currentColor;

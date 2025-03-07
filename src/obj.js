@@ -56,6 +56,8 @@ class Obj {
     }
 
     setAlpha(alpha) {
+        if(alpha > 1) alpha = 1;
+
         this.alpha = alpha;
         this.transparent = this.alpha < 1.0;
         this.scene.setObjTransparency(this);

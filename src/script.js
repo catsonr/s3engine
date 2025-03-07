@@ -71,7 +71,7 @@ async function main() {
     gl.clearColor(0.1, 0.1, 0.2, 1.0);
     gl.clearDepth(1.0);
     gl.depthFunc(gl.LEQUAL);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // assumes premultiplied alpha 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // assumes premultiplied alpha 
 
     gl.enable(gl.DEPTH_TEST);
 
@@ -247,7 +247,7 @@ async function main() {
         conductor.metronome = this.checked;
     });
 
-    function update(t, dt) {
+    function update(dt) {
         // keeps time
         conductor.stepdt(dt);
 
@@ -279,7 +279,7 @@ async function main() {
         t += dt;
         then = timestamp;
 
-        update(t, dt);
+        update(dt);
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
