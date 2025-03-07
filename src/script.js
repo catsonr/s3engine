@@ -36,12 +36,25 @@ async function main() {
     const beatboxScene = new Scene();
     currentScene = beatboxScene;
 
-    let meshCount = 0;
-
     const beatbox = new BeatBox();
     beatbox.setObjData('obj/cube.obj');
-    currentScene.meshes.push(beatbox);
-    meshCount++;
+    currentScene.addObj(beatbox);
+
+    const omar = new Obj();
+    omar.setObjData('obj/omar.obj');
+    omar.setPos([0, -50, 50]);
+    omar.setScale([100, 100, 100]);
+    omar.addRotation([0, 1, 0], Math.PI);
+    currentScene.addObj(omar);
+
+    const graphicsTestScene = new Scene();
+    currentScene = graphicsTestScene;
+
+    currentScene.addObj(new Obj([0, -1, 0], [50, 0.1, 50]));
+    currentScene.meshes[currentScene.meshCount - 1].setObjData('obj/cube.obj');
+
+    currentScene.addObj(new Obj([0, 0, 10], [2, 2, 0.1]));
+    currentScene.meshes[currentScene.meshCount - 1].setObjData('obj/cube.obj');
 
     // ----- setting up canvas -----
     canvas.width = WIDTH;
@@ -107,14 +120,14 @@ async function main() {
     const shadow_lightPovMVP = mat4.create();
 
     const lightPosObj = new Obj([0, 0, 0], [3, 3, 3]);
-    const lightPosObjIndex = meshCount;
-    currentScene.meshes.push(lightPosObj);
-    currentScene.meshes[meshCount++].setObjData('obj/icosphere.obj');
+    const lightPosObjIndex = currentScene.meshCount;
+    lightPosObj.setObjData('obj/icosphere.obj');
+    currentScene.addObj(lightPosObj);
 
     const lightDirObj = new Obj([0, 0, 0], [1, 1, 1]);
-    const lightDirObjIndex = meshCount;
-    currentScene.meshes.push(lightDirObj);
-    currentScene.meshes[meshCount++].setObjData('obj/icosphere.obj');
+    lightDirObj.setObjData('obj/icosphere.obj');
+    const lightDirObjIndex = currentScene.meshCount;
+    currentScene.addObj(lightDirObj);
 
     // sets lightMVP matrix, lightdir uniform, and positions 'light' object(s)
     function generateLightMVP() {
@@ -201,7 +214,7 @@ async function main() {
 
     // ----- user input -----
     canvas.addEventListener('click', (event) => {
-        //canvas.requestPointerLock();
+        canvas.requestPointerLock();
     });
     canvas.addEventListener('mousedown', (event) => {
         beatbox.processMouseDown(event);
@@ -284,6 +297,8 @@ async function main() {
     document.getElementById("debug-playing-checkbox").addEventListener("change", function() {
         if(this.checked) conductor.start();
         else conductor.stop();
+
+        currentScene = beatboxScene;
     });
     document.getElementById("debug-metronome-checkbox").addEventListener("change", function() {
         conductor.metronome = this.checked;

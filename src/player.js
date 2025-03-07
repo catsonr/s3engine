@@ -69,7 +69,7 @@ class Player {
         this.camera = new Camera(this.pos);
 
         // constants
-        this.movementSpeed = 50.0;
+        this.movementSpeed = 10.0;
         this.mouseSensitivity = 0.001;
     }
 
@@ -134,6 +134,6 @@ class Player {
         this.pos[0] += move[0];
         this.pos[2] += move[2];
 
-        this.pos[1] += Number(this.movement.up) - Number(this.movement.down);
+        this.pos[1] += (Number(this.movement.up) - Number(this.movement.down)) / this.movementSpeed;
     }
 }
