@@ -27,17 +27,31 @@ const VERTEXSHADERSOURCECODE = /* glsl */ `#version 300 es
 const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
     precision highp float;
 
+
     in vec2 v_texcoord;
     in vec3 v_normal;
     in vec4 v_positionFromLightPOV;
 
     uniform vec3 u_lightdir;
+    uniform vec3 u_color;
+    uniform float u_alpha;
 
     uniform highp sampler2DShadow u_shadowMap;
 
     out vec4 outputColor;
 
     void main() {
+        vec3 normal = normalize(-v_normal);
+        vec3 lightdir = normalize(u_lightdir);
+
+        float diffuseAmount = dot(normal, lightdir);
+        vec3 ambientLight = vec3(0.2, 0.2, 0.4);
+
+        vec3 currentColor = u_color * u_alpha * diffuseAmount;
+        currentColor = ambientLight + currentColor;
+
+        outputColor = vec4(currentColor, u_alpha);
+        /*
         vec3 lightdir = normalize(u_lightdir);
         vec3 normal   = normalize(-v_normal);
 
@@ -55,6 +69,7 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 
         outputColor + ambientLight;
         outputColor = vec4(outputColor.rgb, 1.0);
+        */
     }`;
 
 

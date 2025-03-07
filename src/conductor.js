@@ -12,9 +12,6 @@ class Chart {
         this.bgmOffset = playbackData.bgm_offset;
 
         this.setMeasure(0);
-
-        console.log('chart loaded');
-        console.log(this);
     }
 
     setMeasure(measureIndex) {
@@ -33,9 +30,6 @@ class Chart {
 
         this.milisecondsPerMeasure = (60 * 1000 * this.measuredivision) / this.BPM;
         this.milisecondsPerBeat = this.milisecondsPerMeasure / this.beatspermeasure;
-
-        console.log('measure', measureIndex, measure);
-        console.log(this);
     }
 }
 
@@ -93,7 +87,6 @@ class Conductor {
         if(!this.playing) return;
 
         if(this.chart.conductor_offset > 0) {
-            console.log('conductor offset', this.chart.conductor_offset);
             this.chart.conductor_offset -= dt;
 
             if(this.chart.conductor_offset <= 0) {

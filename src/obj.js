@@ -25,6 +25,9 @@ class Obj {
 
         this.source = '';
         this.data = null;
+
+        this.color = [Math.random(), Math.random(), Math.random()];
+        this.alpha = 1.0;
     }
 
     update(dt) {

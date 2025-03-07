@@ -15,6 +15,16 @@ html, head, body {
 
     z-index: 0;
 }
+canvas {
+    display: block;
+    image-rendering: pixelated;
+}
+#shadercanvas {
+    background-color: #ff0000; /* bright red, if visible, something is wrong (probably related to alpha) */
+}
+div {
+    color: white;
+}
 
 #debug-overlay {
     position: absolute;
@@ -44,18 +54,6 @@ html, head, body {
 
     text-align: center;
 }
-
-canvas {
-    display: block;
-    image-rendering: pixelated;
-}
-#shadercanvas {
-    background-color: #78b53c;
-}
-div {
-    color: white;
-}
-
 input[type="checkbox"] {
     transform: scale(1.5);
     vertical-align: middle;

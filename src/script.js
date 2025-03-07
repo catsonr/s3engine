@@ -3,7 +3,9 @@ const HEIGHT = window.innerHeight;
 
 const canvasName = "s3canvas";
 const canvas = document.getElementById(canvasName);
-const gl = canvas.getContext("webgl2");
+const gl = canvas.getContext("webgl2", {
+    alpha: false // treats the html canvas as if it has no alpha component. webgl rendering will handle all transparency
+});
 
 const mat4 = glMatrix.mat4;
 const vec3 = glMatrix.vec3;
@@ -27,11 +29,15 @@ async function main() {
     await Obj.loadObj('obj/omar.obj');
     await Obj.loadObj('obj/roundcube.obj');
 
+    let currentScene;
+
     let currentTriCount;
     let currentVertices;
     let currentNormals;
     let currentMatrix;
-    let currentScene;
+    
+    let currentColor;
+    let currentAlpha;
 
     const beatboxScene = new Scene();
     currentScene = beatboxScene;
@@ -53,8 +59,9 @@ async function main() {
     currentScene.addObj(new Obj([0, -1, 0], [50, 0.1, 50]));
     currentScene.meshes[currentScene.meshCount - 1].setObjData('obj/cube.obj');
 
-    currentScene.addObj(new Obj([0, 0, 10], [2, 2, 0.1]));
+    currentScene.addObj(new Obj([0, 2, 4], [1, 1, 1]));
     currentScene.meshes[currentScene.meshCount - 1].setObjData('obj/cube.obj');
+    currentScene.meshes[currentScene.meshCount - 1].alpha = 0.5;
 
     // ----- setting up canvas -----
     canvas.width = WIDTH;
@@ -63,9 +70,22 @@ async function main() {
 
     gl.clearColor(0.1, 0.1, 0.2, 1.0);
     gl.clearDepth(1.0);
+    gl.depthFunc(gl.LEQUAL);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // premultiplied alpha 
+
+    // renders transparent objects 
+    gl.depthMask(false);
+    gl.enable(gl.BLEND);
+    gl.disable(gl.CULL_FACE);
+    gl.disable(gl.DEPTH_TEST);
+
+    // to render opaque:
+    /*
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
-    gl.depthFunc(gl.LEQUAL);
+    */
 
     // ----- creating shader programs -----
     const program          = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
@@ -74,7 +94,7 @@ async function main() {
 
     // ----- pixelate program stuff -----
     gl.useProgram(pixelate_program);
-    const pixelate_downscaleSize = [300, 400];
+    const pixelate_downscaleSize = [WIDTH, HEIGHT];
     const pixelate_texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...pixelate_downscaleSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -202,6 +222,11 @@ async function main() {
     // setting light direction for fragment shader 
     const u_lightdir = gl.getUniformLocation(program, 'u_lightdir');
     gl.uniform3fv(u_lightdir, lightdir);
+
+    // constant color per object
+    const u_color = gl.getUniformLocation(program, 'u_color');
+    // constant alpha per object
+    const u_alpha = gl.getUniformLocation(program, 'u_alpha');
 
     // ----- attributes -----
     // creates and enables vertex array, into a_positions
@@ -371,11 +396,28 @@ async function main() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.viewport(0, 0, ...pixelate_downscaleSize);
         gl.uniform1i(u_shadowMap, 0);
-        for(let i = 0; i < currentScene.meshes.length; i++) {
-            currentVertices = currentScene.meshes[i].data.verticesOut;
-            currentNormals = currentScene.meshes[i].data.normalsOut;
-            currentTriCount = currentScene.meshes[i].data.triCount;
-            currentMatrix = currentScene.meshes[i].matrix;
+        for(let i = 0; i < currentScene.meshCount; i++) {
+            const currentMesh = currentScene.meshes[i];
+
+            currentVertices = currentMesh.data.verticesOut;
+            currentNormals = currentMesh.data.normalsOut;
+            currentTriCount = currentMesh.data.triCount;
+            currentMatrix = currentMesh.matrix;
+
+            currentColor = currentMesh.color;
+            currentAlpha = currentMesh.alpha;
+
+            if (currentMesh.alpha < 1.0) {
+                gl.depthMask(false);
+                gl.enable(gl.BLEND);
+                gl.disable(gl.CULL_FACE);
+                gl.disable(gl.DEPTH_TEST);
+            } else {
+                gl.depthMask(true);
+                gl.disable(gl.BLEND);
+                gl.enable(gl.DEPTH_TEST);
+                gl.enable(gl.CULL_FACE);
+            }
 
             enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
             enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
@@ -383,13 +425,16 @@ async function main() {
             setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
             gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
 
+            gl.uniform3fv(u_color, currentColor);
+            gl.uniform1f(u_alpha, currentAlpha);
+
             // temp: draws beatbox as line segment
-            if(!currentScene.meshes[i] == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
+            if(currentMesh == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
             else gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
-            currentScene.meshes[i].update(dt);
+            currentMesh.update(dt);
         }
 
-        // draw pixelated quad to screen (final pass )
+        // draw pixelated quad to screen (final pass)
         gl.useProgram(pixelate_program);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
