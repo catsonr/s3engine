@@ -28,6 +28,10 @@ class Obj {
 
         this.color = [Math.random(), Math.random(), Math.random()];
         this.alpha = 1.0;
+        this.transparent = false;
+
+        this.scene = null;
+        this.sceneObjIndex = undefined;
     }
 
     update(dt) {
@@ -51,6 +55,13 @@ class Obj {
         this.generateInstanceMatrix();
     }
 
+    setAlpha(alpha) {
+        this.alpha = alpha;
+        this.transparent = this.alpha < 1.0;
+        this.scene.setObjTransparency(this);
+    }
+
+    /* doesnt work 
     setRotation(angleX = 0, angleY = 0, angleZ = 0) {
         const qx = quat.create();
         const qy = quat.create();
@@ -65,6 +76,7 @@ class Obj {
 
         this.generateInstanceMatrix();
     }
+    */
 
     addRotation(axis = [0, 0, 0], angle = 0) {
         const q = quat.create();

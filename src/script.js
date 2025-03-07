@@ -61,7 +61,7 @@ async function main() {
 
     currentScene.addObj(new Obj([0, 2, 4], [1, 1, 1]));
     currentScene.meshes[currentScene.meshCount - 1].setObjData('obj/cube.obj');
-    currentScene.meshes[currentScene.meshCount - 1].alpha = 0.5;
+    currentScene.meshes[currentScene.meshCount - 1].setAlpha(0.5);
 
     // ----- setting up canvas -----
     canvas.width = WIDTH;
@@ -71,73 +71,17 @@ async function main() {
     gl.clearColor(0.1, 0.1, 0.2, 1.0);
     gl.clearDepth(1.0);
     gl.depthFunc(gl.LEQUAL);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // premultiplied alpha 
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // assumes premultiplied alpha 
 
-    // renders transparent objects 
-    gl.depthMask(false);
-    gl.enable(gl.BLEND);
-    gl.disable(gl.CULL_FACE);
-    gl.disable(gl.DEPTH_TEST);
-
-    // to render opaque:
-    /*
-    gl.depthMask(true);
-    gl.disable(gl.BLEND);
     gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-    */
 
     // ----- creating shader programs -----
-    const program          = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
-    const shadow_program   = createProgram(gl, SHADOWVERTEXSHADERSOURCECODE, SHADOWFRAGMENTSHADERSOURCECODE);
-    const pixelate_program = createProgram(gl, PIXELATE_VERTEXSHADERSOURCECODE, PIXELATE_FRAGMENTSHADERSOURCECODE);
+    const program = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
 
-    // ----- pixelate program stuff -----
-    gl.useProgram(pixelate_program);
-    const pixelate_downscaleSize = [WIDTH, HEIGHT];
-    const pixelate_texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...pixelate_downscaleSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-    const pixelate_depthTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, pixelate_depthTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, ...pixelate_downscaleSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    const pixelate_framebuffer = gl.createFramebuffer();
-
-    // finding a_positions attribute 
-    const pixelate_a_positions = gl.getAttribLocation(pixelate_program, 'a_positions');
-    const pixelate_a_positions_BUFFER = createArrayBuffer(gl);
-
-    const pixelate_quadVertices = [
-        -1, -1,
-        1, -1,
-        -1, 1,
-        1, 1,
-    ];
-
-    // ----- shadow program stuff -----
-    gl.useProgram(shadow_program);
-    const shadow_u_mInstance = gl.getUniformLocation(shadow_program, 'u_mInstance');
-    const shadow_u_mLightMVP = gl.getUniformLocation(shadow_program, 'u_mLightMVP');
-
-    const shadow_lightPos = vec3.fromValues(30, 30, -50);
-    const shadow_lightLookingAt = vec3.fromValues(0, 0, 0);
-    const lightdir = vec3.create();
-
-    const shadow_lightZNear = 0.1;
-    const shadow_lightZFar = 300;
-    const shadow_orthoFrustum = [-100, 100, -100, 100];
-
-    const shadow_lightPovView = mat4.create();
-    const shadow_lightPovProj = mat4.create();
-    const shadow_lightPovMVP = mat4.create();
+    // ----- global light stuff -----
+    const globalLightPos = vec3.fromValues(30, 30, -50);
+    const globalLightLookingAt = vec3.fromValues(0, 0, 0);
+    const globalLightDir = vec3.create();
 
     const lightPosObj = new Obj([0, 0, 0], [3, 3, 3]);
     const lightPosObjIndex = currentScene.meshCount;
@@ -149,44 +93,24 @@ async function main() {
     const lightDirObjIndex = currentScene.meshCount;
     currentScene.addObj(lightDirObj);
 
-    // sets lightMVP matrix, lightdir uniform, and positions 'light' object(s)
-    function generateLightMVP() {
-        vec3.set(lightdir, 0, 0, 0);
-        vec3.sub(lightdir, shadow_lightLookingAt, shadow_lightPos);
-        vec3.normalize(lightdir, lightdir);
+    // positions global light and sets uniforms
+    function setGlobalLight() {
+        vec3.set(globalLightDir, 0, 0, 0);
+        vec3.sub(globalLightDir, globalLightLookingAt, globalLightPos);
+        vec3.normalize(globalLightDir, globalLightDir);
 
-        mat4.lookAt(shadow_lightPovView, shadow_lightPos, shadow_lightLookingAt, [0, 1, 0]);
-        //mat4.ortho(shadow_lightPovProj, ...shadow_orthoFrustum, shadow_lightZNear, shadow_lightZFar);
-        mat4.perspective(shadow_lightPovProj, Math.PI / 2, WIDTH / HEIGHT, 0.1, 1000);
-        mat4.multiply(shadow_lightPovMVP, shadow_lightPovProj, shadow_lightPovView);
-        gl.uniformMatrix4fv(shadow_u_mLightMVP, gl.FALSE, shadow_lightPovMVP);
-
-        currentScene.meshes[lightPosObjIndex].setPos(shadow_lightPos);
-        const objdirPos = vec3.clone(shadow_lightPos);
-        vec3.add(objdirPos, objdirPos, lightdir);
-        vec3.add(objdirPos, objdirPos, lightdir);
-        vec3.add(objdirPos, objdirPos, lightdir);
-        vec3.add(objdirPos, objdirPos, lightdir);
-        vec3.add(objdirPos, objdirPos, lightdir);
-        vec3.add(objdirPos, objdirPos, lightdir);
+        currentScene.meshes[lightPosObjIndex].setPos(globalLightPos);
+        const objdirPos = vec3.clone(globalLightPos);
+        vec3.add(objdirPos, objdirPos, globalLightDir);
+        vec3.add(objdirPos, objdirPos, globalLightDir);
+        vec3.add(objdirPos, objdirPos, globalLightDir);
+        vec3.add(objdirPos, objdirPos, globalLightDir);
+        vec3.add(objdirPos, objdirPos, globalLightDir);
+        vec3.add(objdirPos, objdirPos, globalLightDir);
+        vec3.add(objdirPos, objdirPos, globalLightDir);
         currentScene.meshes[lightDirObjIndex].setPos(objdirPos);
     }
-    generateLightMVP();
-
-    // finding a_positions attribute 
-    const shadow_a_positions = gl.getAttribLocation(shadow_program, 'a_positions');
-    const shadow_a_positions_BUFFER = createArrayBuffer(gl);
-
-    // setting up texture map
-    const shadow_depthTextureSize = [1 << 12, 1 << 12];
-    const shadow_depthTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, ...shadow_depthTextureSize);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    const shadow_depthFramebuffer = gl.createFramebuffer();
+    setGlobalLight();
 
     // ----- main program stuff -----
     // ----- uniforms -----
@@ -209,19 +133,12 @@ async function main() {
     mat4.perspective(projMatrix, player.camera.fov, player.camera.aspectRatio, player.camera.zNear, player.camera.zFar);
     gl.uniformMatrix4fv(u_mProj, gl.FALSE, projMatrix);
 
-    // obj instance translate scale matrix
+    // obj instance translate scale rotation matrix
     const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
-
-    // lightMVP for vertex shader
-    const u_mLightPovMVP = gl.getUniformLocation(program, 'u_mLightPovMVP');
-    gl.uniformMatrix4fv(u_mLightPovMVP, false, shadow_lightPovMVP);
-
-    // shadow map for fragment shader
-    const u_shadowMap = gl.getUniformLocation(program, 'u_shadowMap');
 
     // setting light direction for fragment shader 
     const u_lightdir = gl.getUniformLocation(program, 'u_lightdir');
-    gl.uniform3fv(u_lightdir, lightdir);
+    gl.uniform3fv(u_lightdir, globalLightDir);
 
     // constant color per object
     const u_color = gl.getUniformLocation(program, 'u_color');
@@ -265,6 +182,7 @@ async function main() {
         }
     });
 
+    // chart and conductor stuff 
     let chartData = await readChart('charts/triple-baka/playback.json');
     let chart = new Chart(chartData);
     let conductor = new Conductor(chart);
@@ -352,6 +270,8 @@ async function main() {
         debug_bbQuatINode.nodeValue = beatbox.rotationQuat[1].toFixed(3);
         debug_bbQuatJNode.nodeValue = beatbox.rotationQuat[2].toFixed(3);
         debug_bbQuatKNode.nodeValue = beatbox.rotationQuat[3].toFixed(3);
+
+        // TODO: call update for each obj
     }
 
     function draw(timestamp) {
@@ -363,41 +283,16 @@ async function main() {
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // renders shadow map
-        gl.useProgram(shadow_program);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, shadow_depthFramebuffer);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadow_depthTexture, 0);
-        gl.clear(gl.DEPTH_BUFFER_BIT);
-        gl.viewport(0, 0, ...shadow_depthTextureSize);
-
-        for (let i = 0; i < currentScene.meshes.length; i++) {
-            // temp: skips light direction obj and light obj from being drawn to shadow texture
-            // i.e., the camera balls dont cast shadow
-            if(i == lightDirObjIndex || i == lightPosObjIndex) continue;
-
-            currentVertices = currentScene.meshes[i].data.verticesOut;
-            currentNormals = currentScene.meshes[i].data.normalsOut;
-            currentTriCount = currentScene.meshes[i].data.triCount;
-            currentMatrix = currentScene.meshes[i].matrix;
-
-            enableAttribute(gl, shadow_a_positions, shadow_a_positions_BUFFER, 3);
-            setArrayBufferData(gl, shadow_a_positions_BUFFER, currentVertices);
-            gl.uniformMatrix4fv(shadow_u_mInstance, gl.FALSE, currentMatrix);
-
-            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
-        }
-
-        // render everything onto pixelate texture
         gl.useProgram(program);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, pixelate_framebuffer);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pixelate_texture, 0);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, pixelate_depthTexture, 0);
-        gl.bindTexture(gl.TEXTURE_2D, shadow_depthTexture);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.viewport(0, 0, ...pixelate_downscaleSize);
-        gl.uniform1i(u_shadowMap, 0);
-        for(let i = 0; i < currentScene.meshCount; i++) {
-            const currentMesh = currentScene.meshes[i];
+        gl.viewport(0, 0, WIDTH, HEIGHT);
+
+        // draw all opaque objects in current scene
+        gl.depthMask(true);
+        gl.disable(gl.BLEND);
+        gl.enable(gl.CULL_FACE);
+        for(let i = 0; i < currentScene.opaqueIndexes.length; i++) {
+            const currentMesh = currentScene.meshes[currentScene.opaqueIndexes[i]];
 
             currentVertices = currentMesh.data.verticesOut;
             currentNormals = currentMesh.data.normalsOut;
@@ -407,46 +302,49 @@ async function main() {
             currentColor = currentMesh.color;
             currentAlpha = currentMesh.alpha;
 
-            if (currentMesh.alpha < 1.0) {
-                gl.depthMask(false);
-                gl.enable(gl.BLEND);
-                gl.disable(gl.CULL_FACE);
-                gl.disable(gl.DEPTH_TEST);
-            } else {
-                gl.depthMask(true);
-                gl.disable(gl.BLEND);
-                gl.enable(gl.DEPTH_TEST);
-                gl.enable(gl.CULL_FACE);
-            }
+            enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
+            enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
+            setArrayBufferData(gl, a_positions_BUFFER, currentVertices);
+            setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
+
+            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
+            gl.uniform3fv(u_color, currentColor);
+            gl.uniform1f(u_alpha, currentAlpha);
+
+            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+        }
+
+        // draw all transparent objects in current scene
+        gl.depthMask(false);
+        gl.enable(gl.BLEND);
+        gl.disable(gl.CULL_FACE);
+        for(let i = 0; i < currentScene.transparentIndexes.length; i++) {
+            const currentMesh = currentScene.meshes[currentScene.transparentIndexes[i]];
+
+            currentVertices = currentMesh.data.verticesOut;
+            currentNormals = currentMesh.data.normalsOut;
+            currentTriCount = currentMesh.data.triCount;
+            currentMatrix = currentMesh.matrix;
+
+            currentColor = currentMesh.color;
+            currentAlpha = currentMesh.alpha;
 
             enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
             enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
             setArrayBufferData(gl, a_positions_BUFFER, currentVertices);
             setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
-            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
 
+            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
             gl.uniform3fv(u_color, currentColor);
             gl.uniform1f(u_alpha, currentAlpha);
 
-            // temp: draws beatbox as line segment
-            if(currentMesh == beatbox) gl.drawArrays(gl.LINE_STRIP, 0, currentTriCount * 3);
-            else gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
-            currentMesh.update(dt);
+            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
         }
-
-        // draw pixelated quad to screen (final pass)
-        gl.useProgram(pixelate_program);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.bindTexture(gl.TEXTURE_2D, pixelate_texture);
-        gl.viewport(0, 0, WIDTH, HEIGHT);
-
-        enableAttribute(gl, pixelate_a_positions, pixelate_a_positions_BUFFER, 2);
-        setArrayBufferData(gl, pixelate_a_positions_BUFFER, pixelate_quadVertices);
-
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         requestAnimationFrame(draw);
     }
+
+    console.log(currentScene);
 
     // starts drawing loop
     requestAnimationFrame(draw);
