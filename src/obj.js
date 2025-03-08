@@ -24,6 +24,7 @@ class Obj {
         await Obj.loadObj('obj/sharpswan.obj');
         await Obj.loadObj('obj/rosalia.obj');
         await Obj.loadObj('obj/miku.obj');
+        await Obj.loadObj('obj/miku2.obj');
         await Obj.loadObj('obj/omar.obj');
         await Obj.loadObj('obj/roundcube.obj');
     }

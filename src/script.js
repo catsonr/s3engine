@@ -23,7 +23,8 @@ async function main() {
     canvas.height = HEIGHT;
     gl.viewport(0, 0, WIDTH, HEIGHT);
 
-    gl.clearColor(0.1, 0.1, 0.2, 1.0);
+    //gl.clearColor(0.1, 0.1, 0.2, 1.0);
+    gl.clearColor(0.9, 0.9, 0.8, 1.0);
     gl.clearDepth(1.0);
     gl.depthFunc(gl.LEQUAL);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -58,6 +59,10 @@ async function main() {
     currentScene.addObj(new Obj([-10, 0, 25], [10, 10, 0.1]));
     currentScene.objects[currentScene.objCount - 1].setObjData('obj/cube.obj');
 
+    const icosphere = new Obj([-10, 3, 20], [2, 2, 2]);
+    icosphere.setObjData('obj/icosphere.obj');
+    currentScene.addObj(icosphere);
+
     const insideCube = new Obj([0, 1, 4], [0.75, 2, 4]);
     currentScene.addObj(insideCube);
     insideCube.setObjData('obj/roundcube.obj');
@@ -68,11 +73,11 @@ async function main() {
     currentScene.objects[currentScene.objCount - 1].setAlpha(0.5);
 
     currentScene.addObj(new Obj([10, 5, 10], [5, 5, 5]));
-    currentScene.objects[currentScene.objCount - 1].setObjData('obj/miku.obj');
+    currentScene.objects[currentScene.objCount - 1].setObjData('obj/miku2.obj');
     currentScene.objects[currentScene.objCount - 1].setAlpha(0.5);
 
-    currentScene.addObj(new Obj([10, 0, 10], [5, 5, 5]));
-    currentScene.objects[currentScene.objCount - 1].setObjData('obj/miku.obj');
+    currentScene.addObj(new Obj([13, 0, 13], [5, 5, 5]));
+    currentScene.objects[currentScene.objCount - 1].setObjData('obj/miku2.obj');
     currentScene.objects[currentScene.objCount - 1].setAlpha(0.25);
 
     // ----- creating shader programs -----
@@ -82,6 +87,7 @@ async function main() {
     const globalLightPos = vec3.fromValues(30, 30, -50);
     const globalLightLookingAt = vec3.fromValues(0, 0, 0);
     const globalLightDir = vec3.create();
+    const globalLightColor = [1, 1, 1, 1];
 
     const lightPosObj = new Obj([0, 0, 0], [3, 3, 3]);
     lightPosObj.setObjData('obj/icosphere.obj');
@@ -142,6 +148,13 @@ async function main() {
     const u_color = gl.getUniformLocation(program, 'u_color');
     // constant alpha per object
     const u_alpha = gl.getUniformLocation(program, 'u_alpha');
+
+    // where camera is located 
+    const u_cameraPos = gl.getUniformLocation(program, 'u_cameraPos');
+
+    // where global light is located
+    const u_globalLightPos = gl.getUniformLocation(program, 'u_globalLightPos');
+    gl.uniform3fv(u_globalLightPos, globalLightPos);
 
     // ----- attributes -----
     // creates and enables vertex array, into a_positions
@@ -253,9 +266,13 @@ async function main() {
         gl.useProgram(program);
         player.update(dt / 1000);
         player.camera.update(gl, u_mView, viewMatrix);
+        gl.uniform3fv(u_cameraPos, player.camera.pos);
 
         insideCube.addRotation([1, 0, 0], Math.PI / 500);
         insideCube.addRotation([0, 1, 0], Math.PI / 700);
+
+        icosphere.addRotation([-1, 0, 0], Math.PI / 500);
+        icosphere.addRotation([0, 1, 0], Math.PI / 700);
 
         // updates debug overlay
         debug_fpsNode.nodeValue = (1000 / dt).toFixed(1);
