@@ -18,27 +18,23 @@ const Z_AXIS = vec3.fromValues(0, 0, 1);
 let player = new Player([0, 0, -5]);
 
 async function main() {
-    await Obj.loadObj('obj/cone.obj');
-    await Obj.loadObj('obj/cube.obj');
-    await Obj.loadObj('obj/icosphere.obj');
-    await Obj.loadObj('obj/monitor.obj');
-    await Obj.loadObj('obj/monkey.obj');
-    await Obj.loadObj('obj/sharpswan.obj');
-    await Obj.loadObj('obj/rosalia.obj');
-    await Obj.loadObj('obj/miku.obj');
-    await Obj.loadObj('obj/omar.obj');
-    await Obj.loadObj('obj/roundcube.obj');
+    // setting up constants and canvas 
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    gl.viewport(0, 0, WIDTH, HEIGHT);
 
+    gl.clearColor(0.1, 0.1, 0.2, 1.0);
+    gl.clearDepth(1.0);
+    gl.depthFunc(gl.LEQUAL);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.DEPTH_TEST);
+
+    await Obj.preloadObjs();
+
+    // scene being rendered or modified
     let currentScene;
 
-    let currentTriCount;
-    let currentVertices;
-    let currentNormals;
-    let currentMatrix;
-    
-    let currentColor;
-    let currentAlpha;
-
+    // putting stuff in scenes
     const beatboxScene = new Scene();
     currentScene = beatboxScene;
 
@@ -57,23 +53,27 @@ async function main() {
     currentScene = graphicsTestScene;
 
     currentScene.addObj(new Obj([0, -1, 0], [50, 0.1, 50]));
-    currentScene.meshes[currentScene.meshCount - 1].setObjData('obj/cube.obj');
+    currentScene.objects[currentScene.objCount - 1].setObjData('obj/cube.obj');
 
-    currentScene.addObj(new Obj([0, 2, 4], [1, 1, 1]));
-    currentScene.meshes[currentScene.meshCount - 1].setObjData('obj/cube.obj');
-    currentScene.meshes[currentScene.meshCount - 1].setAlpha(0.5);
+    currentScene.addObj(new Obj([-10, 0, 25], [10, 10, 0.1]));
+    currentScene.objects[currentScene.objCount - 1].setObjData('obj/cube.obj');
 
-    // ----- setting up canvas -----
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
-    gl.viewport(0, 0, WIDTH, HEIGHT);
+    const insideCube = new Obj([0, 1, 4], [0.75, 2, 4]);
+    currentScene.addObj(insideCube);
+    insideCube.setObjData('obj/roundcube.obj');
+    insideCube.setAlpha(0.5);
 
-    gl.clearColor(0.1, 0.1, 0.2, 1.0);
-    gl.clearDepth(1.0);
-    gl.depthFunc(gl.LEQUAL);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // assumes premultiplied alpha 
+    currentScene.addObj(new Obj([0, 1, 4], [2, 2, 2]));
+    currentScene.objects[currentScene.objCount - 1].setObjData('obj/cube.obj');
+    currentScene.objects[currentScene.objCount - 1].setAlpha(0.5);
 
-    gl.enable(gl.DEPTH_TEST);
+    currentScene.addObj(new Obj([10, 5, 10], [5, 5, 5]));
+    currentScene.objects[currentScene.objCount - 1].setObjData('obj/miku.obj');
+    currentScene.objects[currentScene.objCount - 1].setAlpha(0.5);
+
+    currentScene.addObj(new Obj([10, 0, 10], [5, 5, 5]));
+    currentScene.objects[currentScene.objCount - 1].setObjData('obj/miku.obj');
+    currentScene.objects[currentScene.objCount - 1].setAlpha(0.25);
 
     // ----- creating shader programs -----
     const program = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
@@ -84,13 +84,11 @@ async function main() {
     const globalLightDir = vec3.create();
 
     const lightPosObj = new Obj([0, 0, 0], [3, 3, 3]);
-    const lightPosObjIndex = currentScene.meshCount;
     lightPosObj.setObjData('obj/icosphere.obj');
     currentScene.addObj(lightPosObj);
 
     const lightDirObj = new Obj([0, 0, 0], [1, 1, 1]);
     lightDirObj.setObjData('obj/icosphere.obj');
-    const lightDirObjIndex = currentScene.meshCount;
     currentScene.addObj(lightDirObj);
 
     // positions global light and sets uniforms
@@ -99,7 +97,7 @@ async function main() {
         vec3.sub(globalLightDir, globalLightLookingAt, globalLightPos);
         vec3.normalize(globalLightDir, globalLightDir);
 
-        currentScene.meshes[lightPosObjIndex].setPos(globalLightPos);
+        lightPosObj.setPos(globalLightPos);
         const objdirPos = vec3.clone(globalLightPos);
         vec3.add(objdirPos, objdirPos, globalLightDir);
         vec3.add(objdirPos, objdirPos, globalLightDir);
@@ -108,7 +106,7 @@ async function main() {
         vec3.add(objdirPos, objdirPos, globalLightDir);
         vec3.add(objdirPos, objdirPos, globalLightDir);
         vec3.add(objdirPos, objdirPos, globalLightDir);
-        currentScene.meshes[lightDirObjIndex].setPos(objdirPos);
+        lightDirObj.setPos(objdirPos);
     }
     setGlobalLight();
 
@@ -256,6 +254,9 @@ async function main() {
         player.update(dt / 1000);
         player.camera.update(gl, u_mView, viewMatrix);
 
+        insideCube.addRotation([1, 0, 0], Math.PI / 500);
+        insideCube.addRotation([0, 1, 0], Math.PI / 700);
+
         // updates debug overlay
         debug_fpsNode.nodeValue = (1000 / dt).toFixed(1);
 
@@ -292,26 +293,18 @@ async function main() {
         gl.disable(gl.BLEND);
         gl.enable(gl.CULL_FACE);
         for(let i = 0; i < currentScene.opaqueIndexes.length; i++) {
-            const currentMesh = currentScene.meshes[currentScene.opaqueIndexes[i]];
-
-            currentVertices = currentMesh.data.verticesOut;
-            currentNormals = currentMesh.data.normalsOut;
-            currentTriCount = currentMesh.data.triCount;
-            currentMatrix = currentMesh.matrix;
-
-            currentColor = currentMesh.color;
-            currentAlpha = currentMesh.alpha;
+            const currentObj = currentScene.objects[currentScene.opaqueIndexes[i]];
 
             enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
             enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
-            setArrayBufferData(gl, a_positions_BUFFER, currentVertices);
-            setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
+            setArrayBufferData(gl, a_positions_BUFFER, currentObj.data.verticesOut);
+            setArrayBufferData(gl, a_normals_BUFFER, currentObj.data.normalsOut);
 
-            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
-            gl.uniform3fv(u_color, currentColor);
-            gl.uniform1f(u_alpha, currentAlpha);
+            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentObj.matrix);
+            gl.uniform3fv(u_color, currentObj.color);
+            gl.uniform1f(u_alpha, currentObj.alpha);
 
-            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+            gl.drawArrays(gl.TRIANGLES, 0, currentObj.data.triCount * 3);
         }
 
         // draw all transparent objects in current scene
@@ -319,32 +312,22 @@ async function main() {
         gl.enable(gl.BLEND);
         gl.disable(gl.CULL_FACE);
         for(let i = 0; i < currentScene.transparentIndexes.length; i++) {
-            const currentMesh = currentScene.meshes[currentScene.transparentIndexes[i]];
-
-            currentVertices = currentMesh.data.verticesOut;
-            currentNormals = currentMesh.data.normalsOut;
-            currentTriCount = currentMesh.data.triCount;
-            currentMatrix = currentMesh.matrix;
-
-            currentColor = currentMesh.color;
-            currentAlpha = currentMesh.alpha;
+            const currentObj = currentScene.objects[currentScene.transparentIndexes[i]];
 
             enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
             enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
-            setArrayBufferData(gl, a_positions_BUFFER, currentVertices);
-            setArrayBufferData(gl, a_normals_BUFFER, currentNormals);
+            setArrayBufferData(gl, a_positions_BUFFER, currentObj.data.verticesOut);
+            setArrayBufferData(gl, a_normals_BUFFER, currentObj.data.normalsOut);
 
-            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentMatrix);
-            gl.uniform3fv(u_color, currentColor);
-            gl.uniform1f(u_alpha, currentAlpha);
+            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentObj.matrix);
+            gl.uniform3fv(u_color, currentObj.color);
+            gl.uniform1f(u_alpha, currentObj.alpha);
 
-            gl.drawArrays(gl.TRIANGLES, 0, currentTriCount * 3);
+            gl.drawArrays(gl.TRIANGLES, 0, currentObj.data.triCount * 3);
         }
 
         requestAnimationFrame(draw);
     }
-
-    console.log(currentScene);
 
     // starts drawing loop
     requestAnimationFrame(draw);

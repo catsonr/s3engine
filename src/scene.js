@@ -1,10 +1,11 @@
 class Scene {
     constructor() {
-        this.meshes = [];
-        this.meshCount = 0;
+        this.objects = [];
+        this.objCount = 0;
 
-        this.transparentIndexes = [];
         this.opaqueIndexes = [];
+        // TODO: find way of determining transparent obj render order
+        this.transparentIndexes = [];
     }
 
     addObj(obj) {
@@ -14,16 +15,16 @@ class Scene {
             return;
         }
         // adds obj to this scene's mesh list
-        this.meshes.push(obj);
-        this.meshCount = this.meshes.length;
+        this.objects.push(obj);
+        this.objCount = this.objects.length;
 
         // tells obj it's in this scene
         obj.scene = this;
-        obj.sceneMeshIndex = this.meshCount - 1;
+        obj.sceneMeshIndex = this.objCount - 1;
 
         // organizes obj based on transparency
-        if(obj.transparent) this.transparentIndexes.push(this.meshCount - 1);
-        else this.opaqueIndexes.push(this.meshCount - 1);
+        if(obj.transparent) this.transparentIndexes.push(this.objCount - 1);
+        else this.opaqueIndexes.push(this.objCount - 1);
     }
 
     setObjTransparency(obj) {

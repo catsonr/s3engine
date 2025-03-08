@@ -15,6 +15,19 @@ class Obj {
         return this.objs.get(path);
     }
 
+    static async preloadObjs() {
+        await Obj.loadObj('obj/cone.obj');
+        await Obj.loadObj('obj/cube.obj');
+        await Obj.loadObj('obj/icosphere.obj');
+        await Obj.loadObj('obj/monitor.obj');
+        await Obj.loadObj('obj/monkey.obj');
+        await Obj.loadObj('obj/sharpswan.obj');
+        await Obj.loadObj('obj/rosalia.obj');
+        await Obj.loadObj('obj/miku.obj');
+        await Obj.loadObj('obj/omar.obj');
+        await Obj.loadObj('obj/roundcube.obj');
+    }
+
     constructor(pos = [0, 0, 0], scale = [1, 1, 1]) {
         this.pos = vec3.fromValues(...pos);
         this.scale = vec3.fromValues(...scale);
