@@ -74,39 +74,27 @@ class Player {
     }
 
     processKeyPress(key) {
-        if (key == 'w') {
-            this.movement.W = true;
-        }
-        else if (key == 'a') {
-            this.movement.A = true;
-        }
-        else if (key == 's') {
-            this.movement.S = true;
-        }
-        else if (key == 'd') {
-            this.movement.D = true;
-        }
+        key = key.toLowerCase();
 
-        else if (key == ' ') this.movement.up = true;
-        else if (key == 'Shift') this.movement.down = true;
+        if(key == 'w') this.movement.W = true;
+        if(key == 'a') this.movement.A = true;
+        if(key == 's') this.movement.S = true;
+        if(key == 'd') this.movement.D = true;
+
+        if(key == ' ') this.movement.up   = true;
+        if(key == 'shift') this.movement.down = true;
     }
 
     processKeyRelease(key) {
-        if (key == 'w') {
-            this.movement.W = false;
-        }
-        else if (key == 'a') {
-            this.movement.A = false;
-        }
-        else if (key == 's') {
-            this.movement.S = false;
-        }
-        else if (key == 'd') {
-            this.movement.D = false;
-        }
+        key = key.toLowerCase();
 
-        else if (key == ' ') this.movement.up = false;
-        else if (key == 'Shift') this.movement.down = false;
+        if(key == 'w') this.movement.W = false;
+        if(key == 'a') this.movement.A = false;
+        if(key == 's') this.movement.S = false;
+        if(key == 'd') this.movement.D = false;
+
+        if(key == ' ') this.movement.up   = false;
+        if(key == 'shift') this.movement.down = false;
     }
 
     processMouseMove(event) {
