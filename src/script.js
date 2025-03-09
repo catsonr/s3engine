@@ -32,7 +32,7 @@ async function main() {
 
     await Obj.preloadObjs();
 
-    // scene being rendered or modified
+    // scene being rendered
     let currentScene;
 
     // putting stuff in scenes
@@ -80,8 +80,6 @@ async function main() {
     currentScene.objects[currentScene.objCount - 1].setObjData('obj/miku2.obj');
     currentScene.objects[currentScene.objCount - 1].setAlpha(0.25);
 
-    // ----- creating shader programs -----
-    const program = createProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
 
     // ----- global light stuff -----
     const globalLightPos = vec3.fromValues(30, 30, -50);
@@ -116,54 +114,48 @@ async function main() {
     }
     setGlobalLight();
 
+    // ----- creating shader programs -----
+    const mainprogram = new ShaderProgram(gl, VERTEXSHADERSOURCECODE, FRAGMENTSHADERSOURCECODE);
+
     // ----- main program stuff -----
-    // ----- uniforms -----
-    gl.useProgram(program);
+    gl.useProgram(mainprogram.program);
+
+    // -- uniforms --
     // world matrix
     const worldMatrix = mat4.create();
-    const u_mWorld = gl.getUniformLocation(program, 'u_mWorld');
     mat4.identity(worldMatrix);
-    gl.uniformMatrix4fv(u_mWorld, gl.FALSE, worldMatrix);
-
+    mainprogram.newUniform('u_mWorld', worldMatrix);
+    
     // view matrix
     const viewMatrix = mat4.create();
-    const u_mView = gl.getUniformLocation(program, 'u_mView');
-    player.camera.update(gl, u_mView, viewMatrix);
+    player.camera.update(gl, mainprogram.uniforms.u_mView, viewMatrix);
     mat4.lookAt(viewMatrix, player.camera.pos, player.camera.lookingAt, player.camera.up);
+    mainprogram.newUniform('u_mView', viewMatrix);
 
     // projection matrix
     const projMatrix = mat4.create();
-    const u_mProj = gl.getUniformLocation(program, 'u_mProj');
     mat4.perspective(projMatrix, player.camera.fov, player.camera.aspectRatio, player.camera.zNear, player.camera.zFar);
-    gl.uniformMatrix4fv(u_mProj, gl.FALSE, projMatrix);
+    mainprogram.newUniform('u_mProj', projMatrix);
 
     // obj instance translate scale rotation matrix
-    const u_mInstance = gl.getUniformLocation(program, 'u_mInstance');
-
+    mainprogram.newUniform('u_mInstance');
     // setting light direction for fragment shader 
-    const u_lightdir = gl.getUniformLocation(program, 'u_lightdir');
-    gl.uniform3fv(u_lightdir, globalLightDir);
-
-    // constant color per object
-    const u_color = gl.getUniformLocation(program, 'u_color');
-    // constant alpha per object
-    const u_alpha = gl.getUniformLocation(program, 'u_alpha');
-
-    // where camera is located 
-    const u_cameraPos = gl.getUniformLocation(program, 'u_cameraPos');
-
+    mainprogram.newUniform('u_lightdir', globalLightDir);
     // where global light is located
-    const u_globalLightPos = gl.getUniformLocation(program, 'u_globalLightPos');
-    gl.uniform3fv(u_globalLightPos, globalLightPos);
+    mainprogram.newUniform('u_globalLightPos', globalLightPos);
+    // constant color per object
+    mainprogram.newUniform('u_color');
+    // constant alpha per object
+    mainprogram.newUniform('u_alpha');
+    // where camera is located 
+    mainprogram.newUniform('u_cameraPos');
 
-    // ----- attributes -----
-    // creates and enables vertex array, into a_positions
-    const a_positions = gl.getAttribLocation(program, 'a_positions');
-    const a_positions_BUFFER = createArrayBuffer(gl);
+    // -- attributes --
+    // position in world space of each vertex
+    mainprogram.newAttribute('a_positions', 3);
 
-    // creates and enables vertex normals array, into a_normals
-    const a_normals = gl.getAttribLocation(program, 'a_normals');
-    const a_normals_BUFFER = createArrayBuffer(gl);
+    // normal of each vertex
+    mainprogram.newAttribute('a_normals', 3);
 
     // ----- user input -----
     canvas.addEventListener('click', (event) => {
@@ -263,10 +255,10 @@ async function main() {
         conductor.stepdt(dt);
 
         // updates player and player's camera
-        gl.useProgram(program);
+        gl.useProgram(mainprogram.program);
         player.update(dt / 1000);
-        player.camera.update(gl, u_mView, viewMatrix);
-        gl.uniform3fv(u_cameraPos, player.camera.pos);
+        player.camera.update(gl, mainprogram.uniforms.u_mView.location, viewMatrix);
+        mainprogram.uniforms.u_cameraPos.setValue(player.camera.pos);
 
         insideCube.addRotation([1, 0, 0], Math.PI / 500);
         insideCube.addRotation([0, 1, 0], Math.PI / 700);
@@ -301,9 +293,12 @@ async function main() {
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.useProgram(program);
+        gl.useProgram(mainprogram.program);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.viewport(0, 0, WIDTH, HEIGHT);
+
+        mainprogram.attributes.a_positions.enableAttribute();
+        mainprogram.attributes.a_normals.enableAttribute();
 
         // draw all opaque objects in current scene
         gl.depthMask(true);
@@ -312,14 +307,12 @@ async function main() {
         for(let i = 0; i < currentScene.opaqueIndexes.length; i++) {
             const currentObj = currentScene.objects[currentScene.opaqueIndexes[i]];
 
-            enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
-            enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
-            setArrayBufferData(gl, a_positions_BUFFER, currentObj.data.verticesOut);
-            setArrayBufferData(gl, a_normals_BUFFER, currentObj.data.normalsOut);
+            mainprogram.attributes.a_positions.setArrayBufferData(currentObj.data.verticesOut);
+            mainprogram.attributes.a_normals.setArrayBufferData(currentObj.data.normalsOut);
 
-            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentObj.matrix);
-            gl.uniform3fv(u_color, currentObj.color);
-            gl.uniform1f(u_alpha, currentObj.alpha);
+            mainprogram.uniforms.u_mInstance.setValue(currentObj.matrix);
+            mainprogram.uniforms.u_color.setValue(currentObj.color);
+            mainprogram.uniforms.u_alpha.setValue(currentObj.alpha);
 
             gl.drawArrays(gl.TRIANGLES, 0, currentObj.data.triCount * 3);
         }
@@ -331,14 +324,12 @@ async function main() {
         for(let i = 0; i < currentScene.transparentIndexes.length; i++) {
             const currentObj = currentScene.objects[currentScene.transparentIndexes[i]];
 
-            enableAttribute(gl, a_positions, a_positions_BUFFER, 3);
-            enableAttribute(gl, a_normals, a_normals_BUFFER, 3);
-            setArrayBufferData(gl, a_positions_BUFFER, currentObj.data.verticesOut);
-            setArrayBufferData(gl, a_normals_BUFFER, currentObj.data.normalsOut);
+            mainprogram.attributes.a_positions.setArrayBufferData(currentObj.data.verticesOut);
+            mainprogram.attributes.a_normals.setArrayBufferData(currentObj.data.normalsOut);
 
-            gl.uniformMatrix4fv(u_mInstance, gl.FALSE, currentObj.matrix);
-            gl.uniform3fv(u_color, currentObj.color);
-            gl.uniform1f(u_alpha, currentObj.alpha);
+            mainprogram.uniforms.u_mInstance.setValue(currentObj.matrix);
+            mainprogram.uniforms.u_color.setValue(currentObj.color);
+            mainprogram.uniforms.u_alpha.setValue(currentObj.alpha);
 
             gl.drawArrays(gl.TRIANGLES, 0, currentObj.data.triCount * 3);
         }
