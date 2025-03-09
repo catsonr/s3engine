@@ -41,7 +41,10 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
         // color constants 
         vec3 ambientLightColor = vec3(0.05, 0.05, 0.1);
         vec3 globalLightColor = vec3(1.0, 1.0, 1.0);
+
+        // constants that should eventually be uniforms 
         float shininess = 2.0;
+        float globalLightPower = 100.0;
 
         vec3 normal = normalize(v_normal);
         vec3 lightdir = normalize(u_lightdir);
@@ -51,18 +54,25 @@ const FRAGMENTSHADERSOURCECODE = /* glsl */ `#version 300 es
 
         // specular highlight 
         vec3 toGlobalLight = u_globalLightPos - v_vertexPos;
-        toGlobalLight = normalize(toGlobalLight);
+        vec3 toGlobalLight_unit = normalize(toGlobalLight);
 
-        vec3 specularReflectionDirection = normalize( 2.0 * dot(v_normal, toGlobalLight) * v_normal - toGlobalLight );
+        vec3 specularReflectionDirection = normalize( 2.0 * dot(v_normal, toGlobalLight_unit) * v_normal - toGlobalLight_unit );
         vec3 toCamera = normalize(u_cameraPos - v_vertexPos);
         float specularSpreadAngle = dot(specularReflectionDirection, toCamera);
         specularSpreadAngle = clamp(specularSpreadAngle, 0.0, 1.0);
         specularSpreadAngle = pow(specularSpreadAngle, shininess);
 
+        // light attenuation 
+        float attenuation = globalLightPower / length(toGlobalLight);
+
         vec3 specularColor = globalLightColor * min(specularSpreadAngle, diffuseAmount);
         vec3 objectColor = u_color * diffuseAmount;
 
         vec3 currentColor = ambientLightColor + specularColor + objectColor;
-        //currentColor *= u_alpha; // uncomment to have more "accurate colors", without this line transparent objects look holographic
+
+        //currentColor *= u_alpha; // uncomment to premultiply alpha, without this line transparent objects look holographic (aka cool)
+        //currentColor *= attenuation; // uncomment to make light dim with distance 
+
         outputColor = vec4(currentColor, u_alpha);
+        //outputColor = vec4(attenuation, attenuation, attenuation, 1.0);
     }`;
