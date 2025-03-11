@@ -33,10 +33,12 @@ div {
     right: auto;
     z-index: 100;
     
-    display: flex;
+    display: flex; /* what overlay should be when visible */
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
+
+    display: none; /* hidden by default */
 }
 #debug-overlay > div {
     background-color: rgba(0, 0, 0, 0.5);

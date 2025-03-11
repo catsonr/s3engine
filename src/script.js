@@ -3,21 +3,89 @@ const HEIGHT = window.innerHeight;
 
 const canvasName = "s3canvas";
 const canvas = document.getElementById(canvasName);
-const gl = canvas.getContext("webgl2", {
-    alpha: false // treats the html canvas as if it has no alpha component. webgl rendering will handle all transparency
-});
 
-const mat4 = glMatrix.mat4;
 const vec3 = glMatrix.vec3;
+const vec4 = glMatrix.vec4;
+const mat4 = glMatrix.mat4;
 const quat = glMatrix.quat;
 
 const X_AXIS = vec3.fromValues(1, 0, 0);
 const Y_AXIS = vec3.fromValues(0, 1, 0);
 const Z_AXIS = vec3.fromValues(0, 0, 1);
 
-let player = new Player([0, 0, -5]);
+function raytrace_main() {
+    // variable declaration
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+
+    const player = new Player([0, 0, 0]);
+
+    const viewport = new Viewport(player.camera);
+    Ray.viewport = viewport; // all rays in memory use this viewport 
+
+    // function declaration
+    let t = 0;
+    let then = 0;
+    function draw(timestamp) {
+        timestamp = isNaN(timestamp) ? 0 : timestamp;
+        const dt = (timestamp - then);
+        t += dt;
+        then = timestamp;
+
+        player.update(dt / 100000);
+        //player.camera.updateMatrices();
+        console.log('player pos: ' + vec3.str(player.pos));
+        console.log('camera pos: ' + vec3.str(player.camera.pos));
+        console.log('\n');
+
+        viewport.sample();
+
+        // writes all viewport sample colors to canvas
+        for (let j = 0; j < viewport.v; j++) {
+            for (let i = 0; i < viewport.u; i++) {
+                setPixel(i, j, viewport.getSampleColor(i, j));
+            }
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    function setPixel(i, j, rgba = []) {
+        ctx.fillStyle = `rgba(${rgba[0] * 255}, ${rgba[1] * 255}, ${rgba[2] * 255}, ${rgba[3]})`
+        ctx.fillRect(i, j, 1, 1);
+    }
+
+    // execute 
+    draw();
+
+    // user input
+    canvas.addEventListener('click', (event) => {
+        canvas.requestPointerLock();
+    });
+    canvas.addEventListener('mousemove', (event) => {
+        if(document.pointerLockElement === canvas) {
+            player.processMouseMove(event);
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if(document.pointerLockElement === canvas) {
+            player.processKeyPress(event.key);
+        }
+    });
+    document.addEventListener('keyup', (event) => {
+        if(document.pointerLockElement === canvas) {
+            player.processKeyRelease(event.key);
+        }
+    });
+}
 
 async function main() {
+    const gl = canvas.getContext("webgl2", {
+        alpha: false // treats the html canvas as if it has no alpha component. webgl rendering will handle all transparency
+    });
+
     // setting up constants and canvas 
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
@@ -31,6 +99,8 @@ async function main() {
     gl.enable(gl.DEPTH_TEST);
 
     await Obj.preloadObjs();
+
+    let player = new Player([0, 0, -5]);
 
     // scene being rendered
     let currentScene;
@@ -121,21 +191,12 @@ async function main() {
     gl.useProgram(mainprogram.program);
 
     // -- uniforms --
-    // world matrix
     const worldMatrix = mat4.create();
     mat4.identity(worldMatrix);
-    mainprogram.newUniform('u_mWorld', worldMatrix);
-    
-    // view matrix
-    const viewMatrix = mat4.create();
-    player.camera.update(gl, mainprogram.uniforms.u_mView, viewMatrix);
-    mat4.lookAt(viewMatrix, player.camera.pos, player.camera.lookingAt, player.camera.up);
-    mainprogram.newUniform('u_mView', viewMatrix);
 
-    // projection matrix
-    const projMatrix = mat4.create();
-    mat4.perspective(projMatrix, player.camera.fov, player.camera.aspectRatio, player.camera.zNear, player.camera.zFar);
-    mainprogram.newUniform('u_mProj', projMatrix);
+    mainprogram.newUniform('u_mWorld', worldMatrix);
+    mainprogram.newUniform('u_mView', player.camera.viewMatrix);
+    mainprogram.newUniform('u_mProj', player.camera.projMatrix);
 
     // obj instance translate scale rotation matrix
     mainprogram.newUniform('u_mInstance');
@@ -195,6 +256,11 @@ async function main() {
     let t = 0;
 
     // debug overlay stuff
+    const debug_overlay = document.getElementById('debug-overlay');
+
+    // make visible (hidden by default)
+    debug_overlay.style.display = "flex";
+
     // finds spans for debug variables
     const debug_fpsElement = document.querySelector('#debug-fps');
 
@@ -254,10 +320,10 @@ async function main() {
         // keeps time
         conductor.stepdt(dt);
 
-        // updates player and player's camera
         gl.useProgram(mainprogram.program);
         player.update(dt / 1000);
-        player.camera.update(gl, mainprogram.uniforms.u_mView.location, viewMatrix);
+        player.camera.updateMatrices();
+        mainprogram.uniforms.u_mView.setValue(player.camera.viewMatrix);
         mainprogram.uniforms.u_cameraPos.setValue(player.camera.pos);
 
         insideCube.addRotation([1, 0, 0], Math.PI / 500);
@@ -280,8 +346,6 @@ async function main() {
         debug_bbQuatINode.nodeValue = beatbox.rotationQuat[1].toFixed(3);
         debug_bbQuatJNode.nodeValue = beatbox.rotationQuat[2].toFixed(3);
         debug_bbQuatKNode.nodeValue = beatbox.rotationQuat[3].toFixed(3);
-
-        // TODO: call update for each obj
     }
 
     function draw(timestamp) {
@@ -342,3 +406,4 @@ async function main() {
 }
 
 main();
+//raytrace_main();

@@ -1,10 +1,18 @@
 class Camera {
     constructor(pos) {
+        // camera angle stuff
+        this.pitch = 0;
+        this.yaw = Math.PI / 2; // rotate 90 to the right to start facing down +x
+
         // position of camera
         this.pos = pos;
-
         // normal vector of direction camera is pointing
-        this.viewingDir = vec3.fromValues(0, 0, 1);
+        this.viewingDir = vec3.fromValues(
+            Math.cos(this.pitch) * Math.cos(this.yaw),
+            Math.sin(this.pitch),
+            Math.cos(this.pitch) * Math.sin(this.yaw)
+        );
+        vec3.normalize(this.viewingDir, this.viewingDir);
 
         // point camera is looking at
         this.lookingAt = vec3.clone(pos);
@@ -17,9 +25,10 @@ class Camera {
         this.zNear = 0.1;
         this.zFar = 1000.0;
 
-        // camera angle stuff
-        this.pitch = 0;
-        this.yaw = 0;
+
+        this.viewMatrix = mat4.create();
+        this.projMatrix = mat4.create();
+        this.updateMatrices();
     }
 
     print() {
@@ -30,25 +39,18 @@ class Camera {
         console.log('\n');
     }
 
-    update(gl, viewMatrixLocation, viewMatrix) {
-        // prevent from tilting camera too low or too high
-        if (this.pitch >= Math.PI / 2) this.pitch = Math.PI / 2;
-        else if (this.pitch <= -Math.PI / 2) this.pitch = -Math.PI / 2;
+    updateMatrices() {
+        this.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, this.pitch));
 
-        // rotate camera based on pitch and yaw 
-        setVec3RotationX(this.viewingDir, this.viewingDir, this.pitch);
-        setVec3RotationY(this.viewingDir, this.viewingDir, this.yaw);
+        this.viewingDir[0] = Math.cos(this.pitch) * Math.cos(this.yaw);
+        this.viewingDir[1] = Math.sin(this.pitch);
+        this.viewingDir[2] = Math.cos(this.pitch) * Math.sin(this.yaw);
         vec3.normalize(this.viewingDir, this.viewingDir);
 
-        // find new lookingAt vector
-        vec3.copy(this.lookingAt, this.pos);
-        vec3.add(this.lookingAt, this.lookingAt, this.viewingDir);
+        vec3.add(this.lookingAt, this.pos, this.viewingDir);
 
-        // constructs view matrix according to position, point camera is looking at, and what direction is 'up'
-        mat4.lookAt(viewMatrix, this.pos, this.lookingAt, this.up);
-
-        // sends view matrix to shader
-        gl.uniformMatrix4fv(viewMatrixLocation, gl.FALSE, viewMatrix);
+        mat4.lookAt(this.viewMatrix, this.pos, this.lookingAt, this.up);
+        mat4.perspective(this.projMatrix, this.fov, this.aspectRatio, this.zNear, this.zFar);
     }
 }
 
@@ -99,7 +101,7 @@ class Player {
 
     processMouseMove(event) {
         this.camera.pitch -= event.movementY * this.mouseSensitivity;
-        this.camera.yaw -= event.movementX * this.mouseSensitivity;
+        this.camera.yaw += event.movementX * this.mouseSensitivity;
     }
 
     update(dt) {
@@ -107,21 +109,31 @@ class Player {
         this.movementDir[0] = Number(this.movement.A) - Number(this.movement.D);
         vec3.normalize(this.movementDir, this.movementDir);
 
-        const forward = vec3.create();
-        vec3.scale(forward, this.camera.viewingDir, this.movementDir[2] * this.movementSpeed * dt);
+        const forward = vec3.fromValues(
+            Math.cos(this.camera.yaw),
+            0,
+            Math.sin(this.camera.yaw),
+        );
+        vec3.normalize(forward, forward);
 
-        const right = vec3.create();
-        vec3.cross(right, this.camera.up, this.camera.viewingDir);
+        const right = vec3.fromValues(
+            Math.sin(this.camera.yaw),
+            0,
+            -Math.cos(this.camera.yaw),
+        );
         vec3.normalize(right, right);
+
+        vec3.scale(forward, forward, this.movementDir[2] * this.movementSpeed * dt);
         vec3.scale(right, right, this.movementDir[0] * this.movementSpeed * dt);
 
         const move = vec3.create();
         vec3.add(move, forward, right);
 
-        // TODO: normalize ignoring Y component
         this.pos[0] += move[0];
+        this.pos[1] += (Number(this.movement.up) - Number(this.movement.down)) / this.movementSpeed;
         this.pos[2] += move[2];
 
-        this.pos[1] += (Number(this.movement.up) - Number(this.movement.down)) / this.movementSpeed;
+        vec3.copy(this.camera.pos, this.pos);
+        this.camera.updateMatrices();
     }
 }
