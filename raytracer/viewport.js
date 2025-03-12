@@ -5,12 +5,15 @@ class Viewport {
         this.height = 1.0;
         this.width  = this.height * camera.aspectRatio;
 
-        this.pixelSize = 4;
+        this.pixelSize = 2;
         this.u = Math.ceil(uCount / this.pixelSize);
         this.v = Math.ceil(vCount / this.pixelSize);
 
         this.stride = 4;
         this.samples = new Float32Array(this.u * this.v * this.stride);
+
+        this.samplesPerPixel = 10;
+        this.antialiasingFuzziness = 0.1;
 
         this.inverseViewMatrix = mat4.create();
         this.inverseProjMatrix = mat4.create();
@@ -30,41 +33,6 @@ class Viewport {
     twoDtoOneD(i, j, width = this.u) {
         return ( j * width + i ) * this.stride;
     }
-    
-    // uv coords of (i, j) to ray from camera position to corresponding viewport location
-    // direction is not normalized
-    twoDtoRayDir(i, j) {
-        // view space coords of (i, j) on viewport
-        const ndc = vec4.fromValues(
-            (2 * i) / this.u - 1,
-            -((2 * j) / this.v - 1),
-            0,
-            1 // homo
-        );
-
-        const p = vec4.create();
-        // transforms p out of proj and into view space
-        vec4.transformMat4(p, ndc, this.inverseProjMatrix);
-        if(p[3] != 0) { // scales by w
-            p[0] /= p[3];
-            p[1] /= p[3];
-            p[2] /= p[3];
-            p[3] = 1;
-        }
-        // transforms p out of view and into world space 
-        vec4.transformMat4(p, p, this.inverseViewMatrix);
-
-        const raydir = vec3.fromValues(
-            p[0],
-            p[1],
-            p[2],
-        );
-        raydir[0] -= this.camera.pos[0];
-        raydir[1] -= this.camera.pos[1];
-        raydir[2] -= this.camera.pos[2];
-
-        return raydir;
-    }
 
     getSampleColor(i, j) {
         const _i = this.twoDtoOneD(i, j);
@@ -80,21 +48,28 @@ class Viewport {
         this.samples[_i + 3] = color[3];
     }
 
-    // calculates sample color of ray
-    traceRay(ray) {
+    // calculates sample color of given ray
+    traceRay(ray, maxdepth=100) {
+        if(maxdepth == 0) return [0, 0, 0, 1];
+
         const ycomponent = (ray.direction[1] + 1) * 0.5;
-        //console.log(ycomponent);
 
         const color = [1, 1, 1, 1];
 
+        // check ray against every sphere for intersection 
         for(let i = 0; i < this.objects.length; i++) {
             ray.checkSphereIntersection(this.objects[i]);
         }
 
-        if(ray.hitResult.t != Infinity) {
-            color[0] = 1 - 0.5 * (ray.hitResult.normal[0] + 1);
-            color[1] = 1 - 0.5 * (ray.hitResult.normal[1] + 1);
-            color[2] = 1 - 0.5 * (ray.hitResult.normal[2] + 1);
+        // if ray hit an object
+        if(ray.hitResult.t != Infinity && ray.hitResult.t > 0.001) {
+            const boundRayDir = randomUnitVectorOnHemisphere(ray.hitResult.normal);
+            const bounceRay = new Ray({origin: ray.hitResult.pos, direction: boundRayDir });
+            const bounceColor = this.traceRay(bounceRay, maxdepth - 1);
+
+            color[0] = 0.5 * bounceColor[0];
+            color[1] = 0.5 * bounceColor[1];
+            color[2] = 0.5 * bounceColor[2];
 
             return color;
         }
@@ -117,8 +92,14 @@ class Viewport {
 
         for(let j = 0; j < this.v; j++) {
             for(let i = 0; i < this.u; i++) {
-                const ray = new Ray(i, j);
-                const color = this.traceRay(ray);
+                const color = vec4.create();
+                for(let k = 0; k < this.samplesPerPixel; k++) {
+                    const ray = new Ray({ u: i, v: j });
+                    const raycolor = this.traceRay(ray);
+                    vec4.add(color, color, raycolor);
+                }
+
+                vec4.scale(color, color, 1 / this.samplesPerPixel);
                 this.setSampleColor(i, j, color);
             }
         }

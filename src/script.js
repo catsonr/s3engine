@@ -44,7 +44,7 @@ function raytrace_main() {
             }
         }
 
-        requestAnimationFrame(draw);
+        //requestAnimationFrame(draw);
     }
 
     function setPixel(i, j, rgba, pixelSize = 1) {
@@ -53,7 +53,9 @@ function raytrace_main() {
     }
 
     // execute 
-    console.log(`ray trace of ${viewport.u}x${viewport.v} rays`);
+    console.log(`ray trace of ${viewport.u}x${viewport.v} viewport`);
+    console.log(`\t@ downscale of 1:${viewport.pixelSize}`);
+    console.log(`\t@ ${viewport.samplesPerPixel} samples/pixel`);
     const executionStartTime = Date.now();
     console.log(`ray trace execution started @ t=${executionStartTime}`);
 
@@ -69,7 +71,7 @@ function raytrace_main() {
 
     // user input
     canvas.addEventListener('click', (event) => {
-        canvas.requestPointerLock();
+        //canvas.requestPointerLock();
     });
     canvas.addEventListener('mousemove', (event) => {
         if(document.pointerLockElement === canvas) {

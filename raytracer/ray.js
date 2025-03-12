@@ -1,22 +1,74 @@
 class Ray {
     static viewport = null;
 
-    constructor(u, v) {
+    constructor({u=undefined, v=undefined, uoffset=0, voffset=0, origin=null, direction=null} = {}) {
         this.u = u;
         this.v = v;
+        this.uOffset = uoffset;
+        this.vOffset = voffset;
+
         if(Ray.viewport === null) {
             console.warn(`ray (${this.u}, ${this.v}) created before viewport was set!`);
         }
-        this.origin = vec3.fromValues(...Ray.viewport.camera.pos);
 
-        this.direction = Ray.viewport.twoDtoRayDir(this.u, this.v);
-        vec3.normalize(this.direction, this.direction);
+        this.origin = null;
+        if(origin === null) { // no origin specified, starting ray at camera position
+            this.origin = vec3.fromValues(...Ray.viewport.camera.pos);
+        } else {
+            this.origin = origin;
+        }
+
+        this.direction = null;
+        if(direction === null) { // no direction specified, getting direction from uv coords
+            this.direction = this.calculateInitialDirection();
+        } else {
+            this.direction = direction;
+        }
 
         this.hitResult = {
             pos: vec3.create(),
             normal: vec3.create(),
             t: Infinity,
         };
+    }
+
+    calculateInitialDirection() {
+        if(this.u === undefined || this.v === undefined) {
+            console.warn(`unable to calculate ray initial direction. ray initialized with no uv coordinate!`);
+            return null;
+        }
+
+        // view space coords on viewport
+        const ndc = vec4.fromValues(
+            (2 * (this.u + this.uOffset)) / Ray.viewport.u - 1,
+            -((2 * (this.v + this.vOffset)) / Ray.viewport.v - 1),
+            0,
+            1 // homo
+        );
+
+        const p = vec4.create();
+        // transforms p out of proj space and into view space
+        vec4.transformMat4(p, ndc, Ray.viewport.inverseProjMatrix);
+        if (p[3] != 0) { // scales by w
+            p[0] /= p[3];
+            p[1] /= p[3];
+            p[2] /= p[3];
+            p[3] = 1;
+        }
+        // transforms p out of view space and into world space 
+        vec4.transformMat4(p, p, Ray.viewport.inverseViewMatrix);
+
+        const raydir = vec3.fromValues(
+            p[0],
+            p[1],
+            p[2],
+        );
+        raydir[0] -= Ray.viewport.camera.pos[0];
+        raydir[1] -= Ray.viewport.camera.pos[1];
+        raydir[2] -= Ray.viewport.camera.pos[2];
+
+        vec3.normalize(raydir, raydir);
+        return raydir;
     }
 
     initHitResults() {
