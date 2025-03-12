@@ -37,19 +37,19 @@ function raytrace_main() {
         player.update(dt / 1000);
         viewport.sample();
 
-        // writes all viewport sample colors to canvas
+        // writes all viewport sample colors to canvas with original pixel size
         for (let j = 0; j < viewport.v; j++) {
             for (let i = 0; i < viewport.u; i++) {
-                setPixel(i, j, viewport.getSampleColor(i, j));
+                setPixel(i, j, viewport.getSampleColor(i, j), viewport.pixelSize);
             }
         }
 
         requestAnimationFrame(draw);
     }
 
-    function setPixel(i, j, rgba = []) {
+    function setPixel(i, j, rgba, pixelSize = 1) {
         ctx.fillStyle = `rgba(${rgba[0] * 255}, ${rgba[1] * 255}, ${rgba[2] * 255}, ${rgba[3]})`
-        ctx.fillRect(i, j, 1, 1);
+        ctx.fillRect(i * pixelSize, j * pixelSize, pixelSize, pixelSize);
     }
 
     // execute 
@@ -63,7 +63,9 @@ function raytrace_main() {
     const dt = executionEndTime - executionStartTime;
     console.log(`ray trace execution ended  @ t=${executionEndTime}`);
     console.log(`=> execution time = ${dt} ms`);
-    console.log(`\t=> ~ ${(1000 / dt).toFixed(1)} fps`)
+    console.log(`\t~ ${(1000 / dt).toFixed(1)} fps`);
+
+    //saveCanvasAsImage(canvas);
 
     // user input
     canvas.addEventListener('click', (event) => {

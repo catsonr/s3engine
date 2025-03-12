@@ -13,10 +13,9 @@ class Ray {
         vec3.normalize(this.direction, this.direction);
 
         this.hitResult = {
-            sampled: false,
             pos: vec3.create(),
             normal: vec3.create(),
-            t: undefined,
+            t: Infinity,
         };
     }
 
@@ -39,36 +38,35 @@ class Ray {
         const p = vec3.create();
         vec3.scaleAndAdd(p, this.origin, this.direction, t);
         return p;
-
-        //return vec3.scaleAndAdd(vec3.create(), this.origin, this.direction, t);
     }
 
     // sets hitResult based on if it hits the sphere or not
-    checkSphereIntersection() {
-        const sphereCenter = vec3.fromValues(0, 0, 3);
-        const r = 1.0;
+    checkSphereIntersection(sphere) {
+        const r = sphere.r;
 
-        const rayoriginToSphere = vec3.clone(sphereCenter);
+        const rayoriginToSphere = vec3.clone(sphere.pos);
         rayoriginToSphere[0] -= this.origin[0];
         rayoriginToSphere[1] -= this.origin[1];
         rayoriginToSphere[2] -= this.origin[2];
 
-        const a = Math.min( vec3.dot(this.direction, this.direction), 1 );
+        const a = vec3.dot(this.direction, this.direction);
         const h = vec3.dot(this.direction, rayoriginToSphere);
-        const c = Math.min( vec3.dot(rayoriginToSphere, rayoriginToSphere) ) - r*r;
+        const c = vec3.dot(rayoriginToSphere, rayoriginToSphere) - r*r;
         const discriminant = h*h - a*c;
 
-        if(discriminant >= 0) { // real solutions -> hits sphere 
-            this.hitResult.t = (h - Math.sqrt(discriminant)) / a;
-            this.hitResult.pos = this.at(this.hitResult.t);
-
-            const n = vec3.subtract(vec3.create(), this.hitResult.pos, sphereCenter);
-            vec3.normalize(n, n);
-            this.hitResult.normal = n;
-        } else { // complex solutions -> misses sphere
-            this.hitResult.t = undefined;
+        if (discriminant >= 0) { // real solutions -> hits sphere 
+            const t = (h - Math.sqrt(discriminant)) / a;
+            if (t < this.hitResult.t && t > 0.0) {
+                this.hitResult.t = t;
+                this.hitResult.pos = this.at(t);
+                const n = vec3.subtract(vec3.create(), this.hitResult.pos, sphere.pos);
+                vec3.normalize(n, n);
+                this.hitResult.normal = n;
+            }
         }
 
-        this.hitResult.sampled = true;
+        if(vec3.dot(this.direction, this.hitResult.normal) > 0.0) {
+            // ray inside sphere
+        }
     }
 }

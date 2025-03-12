@@ -2,17 +2,24 @@ class Viewport {
     constructor(camera, uCount, vCount) {
         this.camera = camera;
 
-        this.width  = 1;
-        this.height = 0.8;
+        this.height = 1.0;
+        this.width  = this.height * camera.aspectRatio;
 
-        this.u = uCount;
-        this.v = vCount;
+        this.pixelSize = 4;
+        this.u = Math.ceil(uCount / this.pixelSize);
+        this.v = Math.ceil(vCount / this.pixelSize);
 
         this.stride = 4;
         this.samples = new Float32Array(this.u * this.v * this.stride);
 
         this.inverseViewMatrix = mat4.create();
         this.inverseProjMatrix = mat4.create();
+
+        this.objects = [];
+        this.objects.push(new Sphere([-3, 0, 7], 1));
+        this.objects.push(new Sphere([1, -1, 5], 2));
+        this.objects.push(new Sphere([-2, -0.5, 6], 0.5));
+        this.objects.push(new Sphere([0, -101, 0], 100));
     }
 
     oneDtoTwoD(i, width = this.u) {
@@ -80,8 +87,11 @@ class Viewport {
 
         const color = [1, 1, 1, 1];
 
-        ray.checkSphereIntersection();
-        if(ray.hitResult.t != undefined && ray.hitResult.t > 0) {
+        for(let i = 0; i < this.objects.length; i++) {
+            ray.checkSphereIntersection(this.objects[i]);
+        }
+
+        if(ray.hitResult.t != Infinity) {
             color[0] = 1 - 0.5 * (ray.hitResult.normal[0] + 1);
             color[1] = 1 - 0.5 * (ray.hitResult.normal[1] + 1);
             color[2] = 1 - 0.5 * (ray.hitResult.normal[2] + 1);
@@ -100,7 +110,7 @@ class Viewport {
         return color;
     }
 
-    // for each viewport position, simulate ray and save color
+    // for each viewport position, trace ray and save color
     sample() {
         mat4.invert(this.inverseViewMatrix, this.camera.viewMatrix);
         mat4.invert(this.inverseProjMatrix, this.camera.projMatrix);
