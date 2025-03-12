@@ -20,7 +20,7 @@ class Camera {
 
         // some constants
         this.up = vec3.fromValues(0, 1, 0);
-        this.fov = (45 * Math.PI) / 180;
+        this.fov = (60 * Math.PI) / 180;
         this.aspectRatio = WIDTH / HEIGHT;
         this.zNear = 0.1;
         this.zFar = 1000.0;
@@ -72,6 +72,7 @@ class Player {
 
         // constants
         this.movementSpeed = 10.0;
+        this.movementSpeedVert = 3.0;
         this.mouseSensitivity = 0.001;
     }
 
@@ -130,7 +131,7 @@ class Player {
         vec3.add(move, forward, right);
 
         this.pos[0] += move[0];
-        this.pos[1] += (Number(this.movement.up) - Number(this.movement.down)) / this.movementSpeed;
+        this.pos[1] += (Number(this.movement.up) - Number(this.movement.down)) * dt * this.movementSpeedVert;
         this.pos[2] += move[2];
 
         vec3.copy(this.camera.pos, this.pos);

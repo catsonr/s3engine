@@ -22,24 +22,19 @@ function raytrace_main() {
 
     const player = new Player([0, 0, 0]);
 
-    const viewport = new Viewport(player.camera);
+    const viewport = new Viewport(player.camera, WIDTH, HEIGHT);
     Ray.viewport = viewport; // all rays in memory use this viewport 
 
     // function declaration
     let t = 0;
     let then = 0;
     function draw(timestamp) {
-        timestamp = isNaN(timestamp) ? 0 : timestamp;
+        timestamp = isNaN(timestamp) ? Date.now() : timestamp;
         const dt = (timestamp - then);
         t += dt;
         then = timestamp;
 
-        player.update(dt / 100000);
-        //player.camera.updateMatrices();
-        console.log('player pos: ' + vec3.str(player.pos));
-        console.log('camera pos: ' + vec3.str(player.camera.pos));
-        console.log('\n');
-
+        player.update(dt / 1000);
         viewport.sample();
 
         // writes all viewport sample colors to canvas
@@ -58,7 +53,17 @@ function raytrace_main() {
     }
 
     // execute 
+    console.log(`ray trace of ${viewport.u}x${viewport.v} rays`);
+    const executionStartTime = Date.now();
+    console.log(`ray trace execution started @ t=${executionStartTime}`);
+
     draw();
+
+    const executionEndTime = Date.now();
+    const dt = executionEndTime - executionStartTime;
+    console.log(`ray trace execution ended  @ t=${executionEndTime}`);
+    console.log(`=> execution time = ${dt} ms`);
+    console.log(`\t=> ~ ${(1000 / dt).toFixed(1)} fps`)
 
     // user input
     canvas.addEventListener('click', (event) => {
@@ -405,5 +410,5 @@ async function main() {
     requestAnimationFrame(draw);
 }
 
-main();
-//raytrace_main();
+//main();
+raytrace_main();
