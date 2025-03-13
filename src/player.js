@@ -25,7 +25,6 @@ class Camera {
         this.zNear = 0.1;
         this.zFar = 1000.0;
 
-
         this.viewMatrix = mat4.create();
         this.projMatrix = mat4.create();
         this.updateMatrices();
@@ -74,6 +73,20 @@ class Player {
         this.movementSpeed = 10.0;
         this.movementSpeedVert = 3.0;
         this.mouseSensitivity = 0.001;
+    }
+
+    loadPlayerData() {
+        let saveData = JSON.parse(sessionStorage.getItem("player"));
+        if(!saveData) return;
+
+        this.pos = vec3.clone(saveData.pos);
+        this.camera.pitch = saveData.camera.pitch;
+        this.camera.yaw = saveData.camera.yaw;
+        this.camera.updateMatrices();
+    }
+
+    savePlayerData() {
+        sessionStorage.setItem("player", JSON.stringify(this));
     }
 
     processKeyPress(key) {

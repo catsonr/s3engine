@@ -25,10 +25,12 @@ class Ray {
             this.direction = direction;
         }
 
+        // data output
         this.hitResult = {
             pos: vec3.create(),
             normal: vec3.create(),
             t: Infinity,
+            color: vec4.create(),
         };
     }
 
@@ -71,20 +73,6 @@ class Ray {
         return raydir;
     }
 
-    initHitResults() {
-        this.hitResult.sampled = false;
-
-        this.hitResult.pos[0] = 0;
-        this.hitResult.pos[1] = 0;
-        this.hitResult.pos[2] = 0;
-
-        this.hitResult.normal[0] = 0;
-        this.hitResult.normal[1] = 0;
-        this.hitResult.normal[2] = 0;
-
-        this.hitResult.t = undefined;
-    }
-
     // returns where ray is at time t 
     at(t) {
         const p = vec3.create();
@@ -108,9 +96,11 @@ class Ray {
 
         if (discriminant >= 0) { // real solutions -> hits sphere 
             const t = (h - Math.sqrt(discriminant)) / a;
-            if (t < this.hitResult.t && t > 0.0) {
+            if (t < this.hitResult.t && t > 0.0) { // this sphere is current closest
                 this.hitResult.t = t;
                 this.hitResult.pos = this.at(t);
+                this.hitResult.color = vec4.fromValues(...sphere.color, 1);
+
                 const n = vec3.subtract(vec3.create(), this.hitResult.pos, sphere.pos);
                 vec3.normalize(n, n);
                 this.hitResult.normal = n;

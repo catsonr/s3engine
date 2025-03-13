@@ -46,6 +46,8 @@ class Obj {
 
         this.scene = null;
         this.sceneObjIndex = undefined;
+
+        this.material = null;
     }
 
     update(dt) {

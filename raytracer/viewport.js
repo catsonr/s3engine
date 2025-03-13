@@ -5,14 +5,14 @@ class Viewport {
         this.height = 1.0;
         this.width  = this.height * camera.aspectRatio;
 
-        this.pixelSize = 2;
+        this.pixelSize = 8;
         this.u = Math.ceil(uCount / this.pixelSize);
         this.v = Math.ceil(vCount / this.pixelSize);
 
         this.stride = 4;
         this.samples = new Float32Array(this.u * this.v * this.stride);
 
-        this.samplesPerPixel = 10;
+        this.samplesPerPixel = 5;
         this.antialiasingFuzziness = 0.1;
 
         this.inverseViewMatrix = mat4.create();
@@ -49,7 +49,7 @@ class Viewport {
     }
 
     // calculates sample color of given ray
-    traceRay(ray, maxdepth=100) {
+    traceRay(ray, maxdepth=4) {
         if(maxdepth == 0) return [0, 0, 0, 1];
 
         const ycomponent = (ray.direction[1] + 1) * 0.5;
@@ -61,19 +61,20 @@ class Viewport {
             ray.checkSphereIntersection(this.objects[i]);
         }
 
-        // if ray hit an object
+        // if ray hit an object (assumed to be the closest)
         if(ray.hitResult.t != Infinity && ray.hitResult.t > 0.001) {
-            const boundRayDir = randomUnitVectorOnHemisphere(ray.hitResult.normal);
-            const bounceRay = new Ray({origin: ray.hitResult.pos, direction: boundRayDir });
+            const bounceRay = Material.materials.metal.bounce(ray);
             const bounceColor = this.traceRay(bounceRay, maxdepth - 1);
+            const sphereColor = ray.hitResult.color;
 
-            color[0] = 0.5 * bounceColor[0];
-            color[1] = 0.5 * bounceColor[1];
-            color[2] = 0.5 * bounceColor[2];
+            color[0] = 0.5 * sphereColor[0] * bounceColor[0];
+            color[1] = 0.5 * sphereColor[1] * bounceColor[1];
+            color[2] = 0.5 * sphereColor[2] * bounceColor[2];
 
             return color;
         }
 
+        // no sphere hit, skybox gradient 
         color[0] = ycomponent;
         color[1] = ycomponent;
         color[2] = ycomponent;

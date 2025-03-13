@@ -14,18 +14,20 @@ const Y_AXIS = vec3.fromValues(0, 1, 0);
 const Z_AXIS = vec3.fromValues(0, 0, 1);
 
 function raytrace_main() {
-    // variable declaration
     const ctx = canvas.getContext('2d');
 
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
 
     const player = new Player([0, 0, 0]);
+    player.loadPlayerData();
 
     const viewport = new Viewport(player.camera, WIDTH, HEIGHT);
     Ray.viewport = viewport; // all rays in memory use this viewport 
 
-    // function declaration
+    const material_lambertian = new Lambertian();
+    const material_metal      = new Metal();
+
     let t = 0;
     let then = 0;
     function draw(timestamp) {
@@ -34,60 +36,64 @@ function raytrace_main() {
         t += dt;
         then = timestamp;
 
-        player.update(dt / 1000);
+        /*
+        console.log(`ray trace of ${viewport.u}x${viewport.v} viewport`);
+        console.log(`\t@ downscale of 1:${viewport.pixelSize}`);
+        console.log(`\t@ ${viewport.samplesPerPixel} samples/pixel`);
+        const executionStartTime = Date.now();
+        console.log(`ray trace execution started @ t=${executionStartTime}`);
+        */
+
+        // update camera stuffs
+        player.update(dt / 10000);
+        // calculate all ray colors 
         viewport.sample();
 
-        // writes all viewport sample colors to canvas with original pixel size
+        // write all viewport sample colors to canvas
         for (let j = 0; j < viewport.v; j++) {
             for (let i = 0; i < viewport.u; i++) {
-                setPixel(i, j, viewport.getSampleColor(i, j), viewport.pixelSize);
+                canvasSetPixel(ctx, i, j, gammaCorrect(viewport.getSampleColor(i, j)), viewport.pixelSize);
             }
         }
 
-        //requestAnimationFrame(draw);
+        /*
+        const executionEndTime = Date.now();
+        const executionTime = executionEndTime - executionStartTime;
+        console.log(`ray trace execution ended  @ t=${executionEndTime}`);
+        console.log(`=> execution time = ${executionTime} ms`);
+        console.log(`\t~ ${(1000 / executionTime).toFixed(1)} fps`);
+        */
+
+        player.savePlayerData();
+        requestAnimationFrame(draw);
     }
-
-    function setPixel(i, j, rgba, pixelSize = 1) {
-        ctx.fillStyle = `rgba(${rgba[0] * 255}, ${rgba[1] * 255}, ${rgba[2] * 255}, ${rgba[3]})`
-        ctx.fillRect(i * pixelSize, j * pixelSize, pixelSize, pixelSize);
-    }
-
-    // execute 
-    console.log(`ray trace of ${viewport.u}x${viewport.v} viewport`);
-    console.log(`\t@ downscale of 1:${viewport.pixelSize}`);
-    console.log(`\t@ ${viewport.samplesPerPixel} samples/pixel`);
-    const executionStartTime = Date.now();
-    console.log(`ray trace execution started @ t=${executionStartTime}`);
-
-    draw();
-
-    const executionEndTime = Date.now();
-    const dt = executionEndTime - executionStartTime;
-    console.log(`ray trace execution ended  @ t=${executionEndTime}`);
-    console.log(`=> execution time = ${dt} ms`);
-    console.log(`\t~ ${(1000 / dt).toFixed(1)} fps`);
-
-    //saveCanvasAsImage(canvas);
 
     // user input
     canvas.addEventListener('click', (event) => {
-        //canvas.requestPointerLock();
+        canvas.requestPointerLock();
     });
     canvas.addEventListener('mousemove', (event) => {
-        if(document.pointerLockElement === canvas) {
+        if (document.pointerLockElement === canvas) {
             player.processMouseMove(event);
         }
     });
     document.addEventListener('keydown', (event) => {
-        if(document.pointerLockElement === canvas) {
+        if (document.pointerLockElement === canvas) {
             player.processKeyPress(event.key);
         }
     });
     document.addEventListener('keyup', (event) => {
-        if(document.pointerLockElement === canvas) {
+        if (document.pointerLockElement === canvas) {
             player.processKeyRelease(event.key);
         }
     });
+    window.addEventListener("beforeunload", () => {
+        player.savePlayerData();
+    });
+
+    // start main loop
+    player.savePlayerData();
+    draw();
 }
 
 async function main() {
@@ -110,6 +116,7 @@ async function main() {
     await Obj.preloadObjs();
 
     let player = new Player([0, 0, -5]);
+    player.loadPlayerData();
 
     // scene being rendered
     let currentScene;
@@ -238,21 +245,24 @@ async function main() {
         beatbox.processMouseUp(event);
     });
     canvas.addEventListener('mousemove', (event) => {
-        if(document.pointerLockElement === canvas) {
+        if (document.pointerLockElement === canvas) {
             player.processMouseMove(event);
         }
 
         beatbox.processMouseMove(event);
     });
     document.addEventListener('keydown', (event) => {
-        if(document.pointerLockElement === canvas) {
+        if (document.pointerLockElement === canvas) {
             player.processKeyPress(event.key);
         }
     });
     document.addEventListener('keyup', (event) => {
-        if(document.pointerLockElement === canvas) {
+        if (document.pointerLockElement === canvas) {
             player.processKeyRelease(event.key);
         }
+    });
+    window.addEventListener("beforeunload", () => {
+        player.savePlayerData();
     });
 
     // chart and conductor stuff 
@@ -315,13 +325,13 @@ async function main() {
     debug_bbQuatJElement.appendChild(debug_bbQuatJNode);
     debug_bbQuatKElement.appendChild(debug_bbQuatKNode);
 
-    document.getElementById("debug-playing-checkbox").addEventListener("change", function() {
-        if(this.checked) conductor.start();
+    document.getElementById("debug-playing-checkbox").addEventListener("change", function () {
+        if (this.checked) conductor.start();
         else conductor.stop();
 
         currentScene = beatboxScene;
     });
-    document.getElementById("debug-metronome-checkbox").addEventListener("change", function() {
+    document.getElementById("debug-metronome-checkbox").addEventListener("change", function () {
         conductor.metronome = this.checked;
     });
 
@@ -377,7 +387,7 @@ async function main() {
         gl.depthMask(true);
         gl.disable(gl.BLEND);
         gl.enable(gl.CULL_FACE);
-        for(let i = 0; i < currentScene.opaqueIndexes.length; i++) {
+        for (let i = 0; i < currentScene.opaqueIndexes.length; i++) {
             const currentObj = currentScene.objects[currentScene.opaqueIndexes[i]];
 
             mainprogram.attributes.a_positions.setArrayBufferData(currentObj.data.verticesOut);
@@ -394,7 +404,7 @@ async function main() {
         gl.depthMask(false);
         gl.enable(gl.BLEND);
         gl.disable(gl.CULL_FACE);
-        for(let i = 0; i < currentScene.transparentIndexes.length; i++) {
+        for (let i = 0; i < currentScene.transparentIndexes.length; i++) {
             const currentObj = currentScene.objects[currentScene.transparentIndexes[i]];
 
             mainprogram.attributes.a_positions.setArrayBufferData(currentObj.data.verticesOut);
