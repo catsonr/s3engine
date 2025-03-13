@@ -1,9 +1,14 @@
 class Material {
     static materials = {};
+    static materialCount = 0;
 
     constructor() {
         if(this.constructor === Material) {
             console.error(`Material is an abstract class and should not be instantiated`);
+        }
+        else {
+            this.index = Material.materialCount;
+            Material.materialCount++;
         }
     }
 
@@ -26,8 +31,7 @@ class Lambertian extends Material {
     }
 
     bounce(ray) {
-        // ray bounces in direction of normal+randomUnitVector (normalized), this distibutes the light randomly
-        // in a similar way to reality 
+        // ray bounces in direction of normal+randomUnitVector (normalized), this distibutes the light (somewhat) randomly
         const bounceDir = randomUnitVectorOnHemisphere(ray.hitResult.normal);
         vec3.add(bounceDir, ray.hitResult.normal, bounceDir);
 
@@ -44,7 +48,7 @@ class Lambertian extends Material {
 }
 
 class Metal extends Material {
-    constructor({name=undefined, fuzziness=0.1} = {}) {
+    constructor({ name=undefined, fuzziness=0.01 } = {}) {
         super();
 
         if(name !== undefined) Material.materials[name] = this;
@@ -62,6 +66,24 @@ class Metal extends Material {
             bounceDir[1] += ruv[1] * this.fuzziness;
             bounceDir[2] += ruv[2] * this.fuzziness;
         }
+
+        return new Ray({ origin: ray.hitResult.pos, direction: bounceDir });
+    }
+}
+
+class Dielectric extends Material {
+    constructor({ name=undefined, refractionIndex=1.1 } = {}) {
+        super();
+
+        if(name !== undefined) Material.materials[name] = this;
+        else Material.materials['dielectric'] = this;
+
+        this.refractionIndex = refractionIndex;
+    }
+
+    bounce(ray) {
+        // metal bounces ray right off material
+        const bounceDir = vec3Refract(ray.direction, ray.hitResult.normal, this.refractionIndex);
 
         return new Ray({ origin: ray.hitResult.pos, direction: bounceDir });
     }

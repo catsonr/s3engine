@@ -19,15 +19,18 @@ function raytrace_main() {
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
 
+    const material_lambertian = new Lambertian();
+    const material_metal      = new Metal();
+    const material_dielectric = new Dielectric();
+
     const player = new Player([0, 0, 0]);
     player.loadPlayerData();
 
     const viewport = new Viewport(player.camera, WIDTH, HEIGHT);
     Ray.viewport = viewport; // all rays in memory use this viewport 
 
-    const material_lambertian = new Lambertian();
-    const material_metal      = new Metal();
 
+    const loop = viewport.pixelSize >= 4 && viewport.samplesPerPixel <= 10;
     let t = 0;
     let then = 0;
     function draw(timestamp) {
@@ -36,13 +39,13 @@ function raytrace_main() {
         t += dt;
         then = timestamp;
 
-        /*
-        console.log(`ray trace of ${viewport.u}x${viewport.v} viewport`);
-        console.log(`\t@ downscale of 1:${viewport.pixelSize}`);
-        console.log(`\t@ ${viewport.samplesPerPixel} samples/pixel`);
         const executionStartTime = Date.now();
-        console.log(`ray trace execution started @ t=${executionStartTime}`);
-        */
+        if (!loop) {
+            console.log(`ray trace of ${viewport.u}x${viewport.v} viewport`);
+            console.log(`\t@ downscale of 1:${viewport.pixelSize}`);
+            console.log(`\t@ ${viewport.samplesPerPixel} samples/pixel`);
+            console.log(`ray trace execution started @ t=${executionStartTime}`);
+        }
 
         // update camera stuffs
         player.update(dt / 10000);
@@ -56,21 +59,21 @@ function raytrace_main() {
             }
         }
 
-        /*
-        const executionEndTime = Date.now();
-        const executionTime = executionEndTime - executionStartTime;
-        console.log(`ray trace execution ended  @ t=${executionEndTime}`);
-        console.log(`=> execution time = ${executionTime} ms`);
-        console.log(`\t~ ${(1000 / executionTime).toFixed(1)} fps`);
-        */
+        if (!loop) {
+            const executionEndTime = Date.now();
+            const executionTime = executionEndTime - executionStartTime;
+            console.log(`ray trace execution ended  @ t=${executionEndTime}`);
+            console.log(`=> execution time = ${executionTime} ms`);
+            if(executionTime / 1000 >= 1.0) console.log(`\t~ ${(executionTime / 1000).toFixed(2)} s`);
+            else console.log(`\t~ ${(1000 / executionTime).toFixed(1)} fps`);
+        }
 
-        player.savePlayerData();
-        requestAnimationFrame(draw);
+        if(loop) requestAnimationFrame(draw);
     }
 
     // user input
     canvas.addEventListener('click', (event) => {
-        canvas.requestPointerLock();
+        if(loop) canvas.requestPointerLock();
     });
     canvas.addEventListener('mousemove', (event) => {
         if (document.pointerLockElement === canvas) {

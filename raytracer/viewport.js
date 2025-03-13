@@ -12,17 +12,17 @@ class Viewport {
         this.stride = 4;
         this.samples = new Float32Array(this.u * this.v * this.stride);
 
-        this.samplesPerPixel = 5;
+        this.samplesPerPixel = 4;
         this.antialiasingFuzziness = 0.1;
 
         this.inverseViewMatrix = mat4.create();
         this.inverseProjMatrix = mat4.create();
 
         this.objects = [];
-        this.objects.push(new Sphere([-3, 0, 7], 1));
-        this.objects.push(new Sphere([1, -1, 5], 2));
-        this.objects.push(new Sphere([-2, -0.5, 6], 0.5));
-        this.objects.push(new Sphere([0, -101, 0], 100));
+        this.objects.push(new Sphere({ pos: [1, -1, 5], r: 2, material: Material.materials.lambertian }));
+        this.objects.push(new Sphere({ pos: [-2, -0.5, 6], r: 0.5, material: Material.materials.metal }));
+        this.objects.push(new Sphere({ pos: [-3, 0, 7], r: 1, material: Material.materials.dielectric }));
+        this.objects.push(new Sphere({ pos: [0, -101, 0], r: 100, material: Material.materials.lambertian }));
     }
 
     oneDtoTwoD(i, width = this.u) {
@@ -49,10 +49,8 @@ class Viewport {
     }
 
     // calculates sample color of given ray
-    traceRay(ray, maxdepth=4) {
+    traceRay(ray, maxdepth=10) {
         if(maxdepth == 0) return [0, 0, 0, 1];
-
-        const ycomponent = (ray.direction[1] + 1) * 0.5;
 
         const color = [1, 1, 1, 1];
 
@@ -63,7 +61,8 @@ class Viewport {
 
         // if ray hit an object (assumed to be the closest)
         if(ray.hitResult.t != Infinity && ray.hitResult.t > 0.001) {
-            const bounceRay = Material.materials.metal.bounce(ray);
+            //const bounceRay = Material.materials.lambertian.bounce(ray);
+            const bounceRay = ray.hitResult.material.bounce(ray);
             const bounceColor = this.traceRay(bounceRay, maxdepth - 1);
             const sphereColor = ray.hitResult.color;
 
@@ -75,6 +74,7 @@ class Viewport {
         }
 
         // no sphere hit, skybox gradient 
+        const ycomponent = (ray.direction[1] + 1) * 0.5;
         color[0] = ycomponent;
         color[1] = ycomponent;
         color[2] = ycomponent;

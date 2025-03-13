@@ -24,6 +24,8 @@ class Ray {
         } else {
             this.direction = direction;
         }
+        // normalize direction, just in case
+        vec3.normalize(this.direction, this.direction);
 
         // data output
         this.hitResult = {
@@ -31,6 +33,7 @@ class Ray {
             normal: vec3.create(),
             t: Infinity,
             color: vec4.create(),
+            material: undefined,
         };
     }
 
@@ -100,6 +103,7 @@ class Ray {
                 this.hitResult.t = t;
                 this.hitResult.pos = this.at(t);
                 this.hitResult.color = vec4.fromValues(...sphere.color, 1);
+                this.hitResult.material = sphere.material;
 
                 const n = vec3.subtract(vec3.create(), this.hitResult.pos, sphere.pos);
                 vec3.normalize(n, n);
