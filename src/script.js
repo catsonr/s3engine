@@ -19,16 +19,18 @@ function raytrace_main() {
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
 
-    const material_lambertian = new Lambertian();
-    const material_metal      = new Metal();
-    const material_dielectric = new Dielectric();
-
     const player = new Player([0, 0, 0]);
-    player.loadPlayerData();
+    player.loadPlayerData(); // copies previous instance of Player from local storage
+
+    player.camera.fov = Math.PI / 4;
+    player.camera.updateMatrices();
+
+    const material_matte = new Matte();
+    const material_metal = new Metal();
+    const material_glass = new Glass();
 
     const viewport = new Viewport(player.camera, WIDTH, HEIGHT);
     Ray.viewport = viewport; // all rays in memory use this viewport 
-
 
     const loop = viewport.pixelSize >= 4 && viewport.samplesPerPixel <= 10;
     let t = 0;
@@ -47,7 +49,7 @@ function raytrace_main() {
             console.log(`ray trace execution started @ t=${executionStartTime}`);
         }
 
-        // update camera stuffs
+        // update player & camera stuffs
         player.update(dt / 10000);
         // calculate all ray colors 
         viewport.sample();

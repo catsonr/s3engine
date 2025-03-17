@@ -6,8 +6,8 @@ class Viewport {
         this.width  = this.height * camera.aspectRatio;
 
         this.pixelSize = 8;
-        this.u = Math.ceil(uCount / this.pixelSize);
-        this.v = Math.ceil(vCount / this.pixelSize);
+        this.u = Math.floor(uCount / this.pixelSize);
+        this.v = Math.floor(vCount / this.pixelSize);
 
         this.stride = 4;
         this.samples = new Float32Array(this.u * this.v * this.stride);
@@ -19,10 +19,11 @@ class Viewport {
         this.inverseProjMatrix = mat4.create();
 
         this.objects = [];
-        this.objects.push(new Sphere({ pos: [1, -1, 5], r: 2, material: Material.materials.lambertian }));
-        this.objects.push(new Sphere({ pos: [-2, -0.5, 6], r: 0.5, material: Material.materials.metal }));
-        this.objects.push(new Sphere({ pos: [-3, 0, 7], r: 1, material: Material.materials.dielectric }));
-        this.objects.push(new Sphere({ pos: [0, -101, 0], r: 100, material: Material.materials.lambertian }));
+        this.objects.push(new Sphere({ pos: [0, -101, 0], r: 100, material: Material.materials.matte }));
+        this.objects.push(new Sphere({ pos: [1, -1, 5], r: 2, material: Material.materials.metal }));
+
+        this.objects.push(new Sphere({ pos: [-2, -0.5, 6], r: 0.5, material: Material.materials.glass }));
+        this.objects.push(new Sphere({ pos: [-3, 0, 7], r: 1, material: Material.materials.glass }));
     }
 
     oneDtoTwoD(i, width = this.u) {
@@ -61,8 +62,8 @@ class Viewport {
 
         // if ray hit an object (assumed to be the closest)
         if(ray.hitResult.t != Infinity && ray.hitResult.t > 0.001) {
-            //const bounceRay = Material.materials.lambertian.bounce(ray);
             const bounceRay = ray.hitResult.material.bounce(ray);
+
             const bounceColor = this.traceRay(bounceRay, maxdepth - 1);
             const sphereColor = ray.hitResult.color;
 

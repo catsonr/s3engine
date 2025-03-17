@@ -34,6 +34,7 @@ class Ray {
             t: Infinity,
             color: vec4.create(),
             material: undefined,
+            inside: false,
         };
     }
 
@@ -85,6 +86,8 @@ class Ray {
 
     // sets hitResult based on if it hits the sphere or not
     checkSphereIntersection(sphere) {
+        if(sphere.r <= 1e-8) return; // cannot hit sphere of radius 0
+
         const r = sphere.r;
 
         const rayoriginToSphere = vec3.clone(sphere.pos);
@@ -111,8 +114,7 @@ class Ray {
             }
         }
 
-        if(vec3.dot(this.direction, this.hitResult.normal) > 0.0) {
-            // ray inside sphere
-        }
+        // if dot(dir, normal) > 0, ray is facing same direction as normal -> inside the sphere
+        this.hitResult.inside = vec3.dot(this.direction, this.hitResult.normal) > 0.0;
     }
 }
