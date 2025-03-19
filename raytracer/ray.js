@@ -1,3 +1,5 @@
+// TO-DO : premultiply color values
+
 class Ray {
     static viewport = null;
 
@@ -6,6 +8,10 @@ class Ray {
         this.v = v;
         this.uOffset = uoffset;
         this.vOffset = voffset;
+
+        // rays with origins that are less than clipDistance away from other ray origins are ignored
+        // i.e., rays are not expected to originate close to objects -> do not have camera close to objects, nor objects close to other objects
+        this.clipDistance = 2 >> 2;
 
         if(Ray.viewport === null) {
             console.warn(`ray (${this.u}, ${this.v}) created before viewport was set!`);
@@ -27,14 +33,18 @@ class Ray {
         // normalize direction, just in case
         vec3.normalize(this.direction, this.direction);
 
-        // data output
+        // data saved as output when ray htis sphere
         this.hitResult = {
+            // minimum data required for raytracer to work
             pos: vec3.create(),
             normal: vec3.create(),
             t: Infinity,
             color: vec4.create(),
-            material: undefined,
+            material: undefined, // should probably index this l8r
             inside: false,
+
+            // debug data, should not be used in calculations
+            spheresHit: [],
         };
     }
 
@@ -49,7 +59,7 @@ class Ray {
             (2 * (this.u + this.uOffset)) / Ray.viewport.u - 1,
             -((2 * (this.v + this.vOffset)) / Ray.viewport.v - 1),
             0,
-            1 // homo
+            1 // homo (w)
         );
 
         const p = vec4.create();
@@ -86,14 +96,10 @@ class Ray {
 
     // sets hitResult based on if it hits the sphere or not
     checkSphereIntersection(sphere) {
-        if(sphere.r <= 1e-8) return; // cannot hit sphere of radius 0
-
         const r = sphere.r;
 
         const rayoriginToSphere = vec3.clone(sphere.pos);
-        rayoriginToSphere[0] -= this.origin[0];
-        rayoriginToSphere[1] -= this.origin[1];
-        rayoriginToSphere[2] -= this.origin[2];
+        vec3.subtract(rayoriginToSphere, rayoriginToSphere, this.origin);
 
         const a = vec3.dot(this.direction, this.direction);
         const h = vec3.dot(this.direction, rayoriginToSphere);
@@ -102,7 +108,9 @@ class Ray {
 
         if (discriminant >= 0) { // real solutions -> hits sphere 
             const t = (h - Math.sqrt(discriminant)) / a;
-            if (t < this.hitResult.t && t > 0.0) { // this sphere is current closest
+            this.hitResult.spheresHit.push(sphere);
+
+            if (t < this.hitResult.t && t > this.clipDistance) { // this sphere is current closest
                 this.hitResult.t = t;
                 this.hitResult.pos = this.at(t);
                 this.hitResult.color = vec4.fromValues(...sphere.color, 1);
@@ -111,10 +119,13 @@ class Ray {
                 const n = vec3.subtract(vec3.create(), this.hitResult.pos, sphere.pos);
                 vec3.normalize(n, n);
                 this.hitResult.normal = n;
+
+                // if dot(dir, normal) > 0, ray is facing same direction as normal -> inside the sphere
+                this.hitResult.inside = vec3.dot(this.direction, this.hitResult.normal) > 0.0;
+                if(this.hitResult.inside) {
+                    console.log('this ray is from the inside of a sphere!!!');
+                }
             }
         }
-
-        // if dot(dir, normal) > 0, ray is facing same direction as normal -> inside the sphere
-        this.hitResult.inside = vec3.dot(this.direction, this.hitResult.normal) > 0.0;
     }
 }

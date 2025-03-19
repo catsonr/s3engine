@@ -49,7 +49,7 @@ class Obj {
     }
 
     update(dt) {
-
+        console.warn(`object's update() function not overridden!`);
     }
 
     setObjData(path) {

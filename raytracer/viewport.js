@@ -19,11 +19,14 @@ class Viewport {
         this.inverseProjMatrix = mat4.create();
 
         this.objects = [];
-        this.objects.push(new Sphere({ pos: [0, -101, 0], r: 100, material: Material.materials.matte }));
-        this.objects.push(new Sphere({ pos: [1, -1, 5], r: 2, material: Material.materials.metal }));
+        this.objects.push(new Sphere({ pos: [0, -1001, 0], r: 1000, material: Material.materials.matte }));
+        this.objects.push(new Sphere({ pos: [-1, 40, 2], r: 30, material: Material.materials.matte }));
 
+        /*
         this.objects.push(new Sphere({ pos: [-2, -0.5, 6], r: 0.5, material: Material.materials.glass }));
         this.objects.push(new Sphere({ pos: [-3, 0, 7], r: 1, material: Material.materials.glass }));
+        this.objects.push(new Sphere({ pos: [1, -1, 5], r: 2, material: Material.materials.metal }));
+        */
     }
 
     oneDtoTwoD(i, width = this.u) {
@@ -49,9 +52,11 @@ class Viewport {
         this.samples[_i + 3] = color[3];
     }
 
-    // calculates sample color of given ray
+    // calculates average color of given ray and its children
+    // closest analog to shader code
     traceRay(ray, maxdepth=10) {
-        if(maxdepth == 0) return [0, 0, 0, 1];
+        if(maxdepth == 0) return [0, 0, 0, 1]; // out of bounces (energy?), black
+        if(ray === null) return [0, 0, 0, 0];
 
         const color = [1, 1, 1, 1];
 
@@ -61,15 +66,17 @@ class Viewport {
         }
 
         // if ray hit an object (assumed to be the closest)
-        if(ray.hitResult.t != Infinity && ray.hitResult.t > 0.001) {
-            const bounceRay = ray.hitResult.material.bounce(ray);
+        if(ray.hitResult.t != Infinity && ray.hitResult.t > 0.0) {
+            const bounceRay = ray.hitResult.material.bounce(ray); // spawns new ray from hit (child)
 
-            const bounceColor = this.traceRay(bounceRay, maxdepth - 1);
+            const bounceColor = this.traceRay(bounceRay, maxdepth - 1); // recursive call using new child ray
             const sphereColor = ray.hitResult.color;
 
-            color[0] = 0.5 * sphereColor[0] * bounceColor[0];
-            color[1] = 0.5 * sphereColor[1] * bounceColor[1];
-            color[2] = 0.5 * sphereColor[2] * bounceColor[2];
+            const attenuation = ray.hitResult.material.attenuation;
+            color[0] = attenuation[0] * sphereColor[0] * bounceColor[0];
+            color[1] = attenuation[1] * sphereColor[1] * bounceColor[1];
+            color[2] = attenuation[2] * sphereColor[2] * bounceColor[2];
+            color[3] = sphereColor[3] * bounceColor[3];
 
             return color;
         }
@@ -96,9 +103,20 @@ class Viewport {
             for(let i = 0; i < this.u; i++) {
                 const color = vec4.create();
                 for(let k = 0; k < this.samplesPerPixel; k++) {
-                    const ray = new Ray({ u: i, v: j });
+                    const uOffset = rand(0, 0.2);
+                    const vOffset = rand(0, 0.2);
+
+                    const ray = new Ray({ u: i, v: j, uOffset: uOffset, vOffset: vOffset });
                     const raycolor = this.traceRay(ray);
                     vec4.add(color, color, raycolor);
+
+                    if(k === 0 && j === 0) {
+                        if(ray.hitResult.spheresHit.length > 1) {
+                            console.log(`ray hit ${ray.hitResult.spheresHit.length} spheres:`);
+                            console.log(ray.hitResult);
+                            console.log('\n');
+                        }
+                    }
                 }
 
                 vec4.scale(color, color, 1 / this.samplesPerPixel);

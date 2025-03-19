@@ -2,7 +2,7 @@ class Material {
     static materials = {};
     static materialCount = 0;
 
-    constructor() {
+    constructor(attenuation=[0.5, 0.5, 0.5]) {
         if(this.constructor === Material) {
             console.error(`Material is an abstract class and should not be instantiated`);
         }
@@ -10,6 +10,8 @@ class Material {
             this.index = Material.materialCount;
             Material.materialCount++;
         }
+        
+        this.attenuation = vec3.fromValues(...attenuation);
     }
 
     // how each material spawns a new ray at hit location
@@ -34,24 +36,32 @@ class Material {
         return reflected;
     }
 
-    static refract(v, n, refractionIndex) {
+    static refract(v, n, refractionIndex, cosThetaPrecompute=undefined) {
         // refracted_perpendicular = etai/etat * (v + dot(-v, n)*n)
         // refracted_parallel      = -sqrt(1 - |refracted_perpendicular|^2) * n
 
-        const refractedPerpendicular = vec3.create();
-        const dot = vec3.dot(vec3.negate(vec3.create(), v), n);
-        refractedPerpendicular[0] = refractionIndex * (v[0] + dot * n[0]);
-        refractedPerpendicular[1] = refractionIndex * (v[1] + dot * n[1]);
-        refractedPerpendicular[2] = refractionIndex * (v[2] + dot * n[2]);
+        const dir = vec3.normalize(vec3.create(), v);
+        const normal = vec3.normalize(vec3.create(), n);
 
-        const refractedParallel = vec3.clone(n);
-        const sqrtTerm = Math.sqrt(Math.max(0, 1 - vec3.dot(refractedPerpendicular, refractedPerpendicular)));
-        vec3.scale(refractedParallel, n, -sqrtTerm);
+        // cosTheta = dot(-v, n)
+        let cosTheta; 
+        if(cosThetaPrecompute === undefined) cosTheta = Math.min(vec3.dot(vec3.negate(vec3.create(), dir), normal), 1.0);
+        else cosTheta = cosThetaPrecompute;
 
-        const refractDir = vec3.create();
-        vec3.add(refractDir, refractedPerpendicular, refractedParallel);
-    
-        return refractDir;
+        // Compute perpendicular component
+        const perpendicular = vec3.create();
+        const scaledNormal = vec3.scale(vec3.create(), normal, cosTheta);
+        const addVec = vec3.add(vec3.create(), dir, scaledNormal);
+        vec3.scale(perpendicular, addVec, refractionIndex);
+
+        // Compute parallel component
+        const magSq = vec3.dot(perpendicular, perpendicular);
+        const sqrtTerm = Math.sqrt(Math.max(0, 1.0 - magSq));
+        const parallel = vec3.scale(vec3.create(), normal, -sqrtTerm);
+
+        // Combine for refracted direction
+        const refracted = vec3.add(vec3.create(), perpendicular, parallel);
+        return refracted;
     }
 }
 
@@ -81,7 +91,7 @@ class Matte extends Material {
 }
 
 class Metal extends Material {
-    constructor({ name=undefined, fuzziness=0.1 } = {}) {
+    constructor({ name=undefined, fuzziness=0.01 } = {}) {
         super();
 
         if(name !== undefined) Material.materials[name] = this;
@@ -106,8 +116,8 @@ class Metal extends Material {
 }
 
 class Glass extends Material {
-    constructor({ name=undefined, refractionIndex=10 } = {}) {
-        super();
+    constructor({ name=undefined, refractionIndex=1.33, attenuation=[1.0, 1.0, 1.0] } = {}) {
+        super(attenuation);
 
         if(name !== undefined) Material.materials[name] = this;
         else Material.materials['glass'] = this;
@@ -116,28 +126,33 @@ class Glass extends Material {
     }
 
     bounce(ray) {
-        // setting refraction index based on if ray is hitting sphere or leaving sphere
-        let ri = ray.hitResult.inside ? this.refractionIndex : (1.0 / this.refractionIndex);
+        const ri = !ray.hitResult.inside ? this.refractionIndex : (1.0 / this.refractionIndex);
 
-        // metal bounces ray right off material
-        const cosTheta = Math.min(vec3.dot(vec3.negate(vec3.create(), ray.direction), ray.hitResult.normal), 1.0);
+        const dir = vec3.normalize(vec3.create(), ray.direction);
+        const normal = vec3.normalize(vec3.create(), ray.hitResult.normal);
+
+        // cosTheta = dot(-v, n)
+        const cosTheta = Math.min(vec3.dot(vec3.negate(vec3.create(), dir), normal), 1.0);
+        // sinTheta = sqrt(1 - cosTheta^2)
         const sinTheta = Math.sqrt(1.0 - cosTheta*cosTheta);
 
         let bounceDir = null;
-        if(ri * sinTheta > 1.0 || Glass.reflectance(cosTheta, ri) > rand()) { // cannot refract
-            bounceDir = Material.reflect(ray.direction, ray.hitResult.normal);
+        if(sinTheta * ri > 1.0) { // must reflect
+            bounceDir = Material.reflect(dir, normal);
         } else { // can refract
-            bounceDir = Material.refract(ray.direction, ray.hitResult.normal, ri);
+            bounceDir = Material.refract(dir, normal, ri, cosTheta);
         }
 
+        //return null; // glass always returns null ray(for now)
         return new Ray({ origin: ray.hitResult.pos, direction: bounceDir });
     }
 
     static reflectance(cosTheta, refractionIndex) {
         let r = (1 - refractionIndex) / (1 + refractionIndex);
-        r *= r;
+        r = r*r;
 
         cosTheta = Math.abs(cosTheta);
-        return r + (1 - r) * (1-cosTheta)*(1-cosTheta)*(1-cosTheta)*(1-cosTheta)*(1-cosTheta);
+        //return r + (1 - r) * (1-cosTheta)*(1-cosTheta)*(1-cosTheta)*(1-cosTheta)*(1-cosTheta);
+        return r + (1-r)*Math.pow( (1-cosTheta), 5 );
     }
 }

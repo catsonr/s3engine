@@ -18,9 +18,11 @@ html, head, body {
 canvas {
     display: block;
     image-rendering: pixelated;
-}
-#shadercanvas {
-    background-color: #ff0000; /* bright red, if visible, something is wrong (probably related to alpha) */
+
+    background-image: url('img/ahh.png'); /* canvas background is ahh.png. if you see a cat, there's something wrong (relating to transparency) */
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
 }
 div {
     color: white;

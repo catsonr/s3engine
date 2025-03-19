@@ -19,7 +19,7 @@ function raytrace_main() {
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
 
-    const player = new Player([0, 0, 0]);
+    const player = new Player([0, 100, -100]);
     player.loadPlayerData(); // copies previous instance of Player from local storage
 
     player.camera.fov = Math.PI / 4;
@@ -50,7 +50,7 @@ function raytrace_main() {
         }
 
         // update player & camera stuffs
-        player.update(dt / 10000);
+        player.update(dt);
         // calculate all ray colors 
         viewport.sample();
 
