@@ -13,94 +13,6 @@ const X_AXIS = vec3.fromValues(1, 0, 0);
 const Y_AXIS = vec3.fromValues(0, 1, 0);
 const Z_AXIS = vec3.fromValues(0, 0, 1);
 
-function raytrace_main() {
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
-
-    const player = new Player([0, 100, -100]);
-    player.loadPlayerData(); // copies previous instance of Player from local storage
-
-    player.camera.fov = Math.PI / 4;
-    player.camera.updateMatrices();
-
-    const material_matte = new Matte();
-    const material_metal = new Metal();
-    const material_glass = new Glass();
-
-    const viewport = new Viewport(player.camera, WIDTH, HEIGHT);
-    Ray.viewport = viewport; // all rays in memory use this viewport 
-
-    const loop = viewport.pixelSize >= 4 && viewport.samplesPerPixel <= 10;
-    let t = 0;
-    let then = 0;
-    function draw(timestamp) {
-        timestamp = isNaN(timestamp) ? Date.now() : timestamp;
-        const dt = (timestamp - then);
-        t += dt;
-        then = timestamp;
-
-        const executionStartTime = Date.now();
-        if (!loop) {
-            console.log(`ray trace of ${viewport.u}x${viewport.v} viewport`);
-            console.log(`\t@ downscale of 1:${viewport.pixelSize}`);
-            console.log(`\t@ ${viewport.samplesPerPixel} samples/pixel`);
-            console.log(`ray trace execution started @ t=${executionStartTime}`);
-        }
-
-        // update player & camera stuffs
-        player.update(dt);
-        // calculate all ray colors 
-        viewport.sample();
-
-        // write all viewport sample colors to canvas
-        for (let j = 0; j < viewport.v; j++) {
-            for (let i = 0; i < viewport.u; i++) {
-                canvasSetPixel(ctx, i, j, gammaCorrect(viewport.getSampleColor(i, j)), viewport.pixelSize);
-            }
-        }
-
-        if (!loop) {
-            const executionEndTime = Date.now();
-            const executionTime = executionEndTime - executionStartTime;
-            console.log(`ray trace execution ended  @ t=${executionEndTime}`);
-            console.log(`=> execution time = ${executionTime} ms`);
-            if(executionTime / 1000 >= 1.0) console.log(`\t~ ${(executionTime / 1000).toFixed(2)} s`);
-            else console.log(`\t~ ${(1000 / executionTime).toFixed(1)} fps`);
-        }
-
-        if(loop) requestAnimationFrame(draw);
-    }
-
-    // user input
-    canvas.addEventListener('click', (event) => {
-        if(loop) canvas.requestPointerLock();
-    });
-    canvas.addEventListener('mousemove', (event) => {
-        if (document.pointerLockElement === canvas) {
-            player.processMouseMove(event);
-        }
-    });
-    document.addEventListener('keydown', (event) => {
-        if (document.pointerLockElement === canvas) {
-            player.processKeyPress(event.key);
-        }
-    });
-    document.addEventListener('keyup', (event) => {
-        if (document.pointerLockElement === canvas) {
-            player.processKeyRelease(event.key);
-        }
-    });
-    window.addEventListener("beforeunload", () => {
-        player.savePlayerData();
-    });
-
-    // start main loop
-    player.savePlayerData();
-    draw();
-}
-
 async function main() {
     const gl = canvas.getContext("webgl2", {
         alpha: false // treats the html canvas as if it has no alpha component. webgl rendering will handle all transparency
@@ -345,7 +257,7 @@ async function main() {
         conductor.stepdt(dt);
 
         gl.useProgram(mainprogram.program);
-        player.update(dt / 1000);
+        player.update(dt);
         player.camera.updateMatrices();
         mainprogram.uniforms.u_mView.setValue(player.camera.viewMatrix);
         mainprogram.uniforms.u_cameraPos.setValue(player.camera.pos);
@@ -429,5 +341,4 @@ async function main() {
     requestAnimationFrame(draw);
 }
 
-//main();
-raytrace_main();
+main();
